@@ -1184,3 +1184,104 @@
     display: none;
   }
 }
+
+/* Reference-inspired surround only: the CRT hardware stays unchanged. */
+.desk-root {
+  background-color: #b7ff2a;
+  background-image: radial-gradient(#111 0.75px, transparent 0.75px);
+  background-size: 7px 7px;
+}
+
+.desk-root::before,
+.desk-root::after {
+  pointer-events: none;
+  position: absolute;
+  z-index: 0;
+  content: '';
+}
+
+.desk-root::before {
+  top: 8px;
+  right: 8px;
+  bottom: 8px;
+  left: 8px;
+  border: 3px solid #111;
+  background: #f6f3eb;
+  box-shadow: 5px 5px 0 #111;
+}
+
+.desk-root::after {
+  top: 12px;
+  right: 12px;
+  left: 12px;
+  height: 24px;
+  border-bottom: 3px solid #111;
+  background: repeating-linear-gradient(90deg, #16a6c8 0 22px, #f6f3eb 22px 44px);
+}
+
+.desk-root > * {
+  position: relative;
+  z-index: 1;
+}
+
+.desk-wall {
+  width: calc(100% - 18px);
+  height: 34px;
+  margin: 0 auto;
+  border: 2px solid #111;
+  background: #f6f3eb;
+}
+
+.desk-blinds {
+  width: 88px;
+  height: 20px;
+  margin: 5px 0 0 7px;
+  border-width: 2px;
+  background: repeating-linear-gradient(90deg, #1d4ed8 0 8px, #16a6c8 8px 16px, #111 16px 18px);
+  box-shadow: 2px 2px 0 #111;
+}
+
+.desk-board {
+  border-color: #111;
+  background: #f6f3eb;
+  box-shadow: 4px 4px 0 #111;
+}
+
+.desk-caption {
+  color: #111;
+}
+
+@media (max-width: 480px) {
+  .desk-root::before {
+    top: 5px;
+    right: 5px;
+    bottom: 5px;
+    left: 5px;
+    border-width: 2px;
+    box-shadow: 3px 3px 0 #111;
+  }
+
+  .desk-root::after {
+    top: 8px;
+    right: 8px;
+    left: 8px;
+    height: 18px;
+    border-bottom-width: 2px;
+  }
+
+  .desk-wall {
+    height: 23px;
+    border-width: 2px;
+  }
+
+  .desk-blinds {
+    width: 62px;
+    height: 14px;
+    margin: 3px 0 0 4px;
+    border-width: 2px;
+  }
+
+  .desk-board {
+    box-shadow: 3px 3px 0 #111;
+  }
+}
