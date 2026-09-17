@@ -39,7 +39,7 @@ export function DeskComputer({
   const screenRef = useRef<HTMLDivElement>(null)
   const dragRef = useRef<{ pointerId: number; lastX: number; lastY: number; moved: number } | null>(null)
   const pointerRef = useRef({ x: 48, y: 42 })
-  const [mouse, setMouse] = useState({ x: 78, y: 3 })
+  const [mouse, setMouse] = useState({ x: 78, y: 49 })
   const [pointer, setPointer] = useState({ x: 48, y: 42 })
   const [dragging, setDragging] = useState(false)
   const [pressed, setPressed] = useState(false)
@@ -78,7 +78,7 @@ export function DeskComputer({
     const box = desk.getBoundingClientRect()
     setMouse({
       x: Math.min(86, Math.max(8, ((event.clientX - 18 - box.left) / box.width) * 100)),
-      y: Math.min(16, Math.max(0, ((box.bottom - event.clientY - 18) / box.height) * 100)),
+      y: Math.min(58, Math.max(0, ((box.bottom - event.clientY - 18) / box.height) * 100)),
     })
     setCursor({
       x: Math.min(96, Math.max(3, pointerRef.current.x + (dx / box.width) * 180)),

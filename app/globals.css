@@ -941,10 +941,216 @@
   white-space: nowrap;
 }
 
-.laptop-term-form input {
+  .laptop-term-form input {
   min-width: 0;
   flex: 1;
   background: transparent;
   color: var(--card);
   outline: none;
+  }
+
+/* Compact monitor-first desk: keep the physical computer readable on phones. */
+.desk-root {
+  min-height: 100svh;
+  height: 100svh;
+  padding: 8px;
+}
+
+.desk-wall {
+  height: 30px;
+}
+
+.desk-machines {
+  flex: 0 1 auto;
+  width: min(100%, 720px);
+  min-height: 0;
+  height: min(52svh, 360px);
+  margin: 0 auto;
+}
+
+.crt-unit {
+  min-width: 0;
+}
+
+.crt-bezel {
+  padding: 6px 6px 4px;
+  box-shadow: 4px 4px 0 var(--border);
+}
+
+.crt-glass,
+.crt-glass-phosphor,
+.crt-glass-wallpaper,
+.crt-glass-off {
+  margin: 2px 4px 4px;
+  border-width: 3px;
+}
+
+.crt-glass-wallpaper {
+  background-image: url('/wallpaper-95.png'), linear-gradient(rgb(246 243 235 / 14%) 1px, transparent 1px), linear-gradient(90deg, rgb(246 243 235 / 14%) 1px, transparent 1px);
+  background-position: center, 0 0, 0 0;
+  background-size: cover, 10px 10px, 10px 10px;
+}
+
+.tower {
+  width: 54px;
+  gap: 4px;
+  padding: 5px 4px 4px;
+  border-width: 3px;
+  box-shadow: 4px 4px 0 var(--border);
+}
+
+.tower-drive {
+  height: 23px;
+  font-size: 7px;
+}
+
+.tower-power {
+  width: 18px;
+  height: 18px;
+}
+
+.desk-board {
+  width: min(100%, 720px);
+  margin: 8px auto 0;
+  border-top-width: 3px;
+  padding: 6px 48px 7px 6px;
+}
+
+.desk-key {
+  height: 14px;
+  font-size: 7px;
+}
+
+.desk-mouse {
+  width: 34px;
+  height: 46px;
+}
+
+.win95-title,
+.win95-title > * {
+  min-width: 0;
+  white-space: nowrap;
+}
+
+.win95-title > span:first-child {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.win95-window {
+  margin: 4px;
+}
+
+@media (max-width: 480px) {
+  .desk-root {
+    padding: 5px;
+  }
+
+  .desk-wall {
+    height: 20px;
+  }
+
+  .desk-caption {
+    top: 6px;
+    right: 5px;
+    width: 105px;
+    font-size: 7px;
+  }
+
+  .desk-machines {
+    width: 100%;
+    height: min(43svh, 245px);
+    gap: 5px;
+    padding: 0 4px;
+  }
+
+  .crt-bezel {
+    border-width: 3px;
+    padding: 4px 4px 3px;
+    box-shadow: 3px 3px 0 var(--border);
+  }
+
+  .crt-chin {
+    font-size: 7px;
+  }
+
+  .crt-knobs {
+    gap: 3px;
+  }
+
+  .crt-knob {
+    width: 11px;
+    height: 11px;
+  }
+
+  .tower {
+    width: 43px;
+    border-width: 3px;
+    padding: 4px 3px 3px;
+  }
+
+  .tower-brand,
+  .tower-reset,
+  .tower-drive {
+    font-size: 6px;
+  }
+
+  .tower-drive {
+    height: 20px;
+    padding: 2px;
+  }
+
+  .desk-board {
+    width: calc(100% - 8px);
+    margin-top: 5px;
+    padding-right: 40px;
+  }
+
+  .desk-keyboard {
+    padding: 3px;
+    gap: 2px;
+  }
+
+  .desk-key-row {
+    gap: 2px;
+  }
+
+  .desk-key {
+    height: 12px;
+    border-width: 1px;
+    font-size: 6px;
+  }
+
+  .desk-mouse {
+    width: 28px;
+    height: 38px;
+    border-width: 2px;
+  }
+
+  .desk-mouse-btn {
+    height: 10px;
+    margin-top: 6px;
+  }
+
+  .win95-taskbar {
+    gap: 2px;
+    padding: 2px;
+  }
+
+  .win95-start,
+  .win95-task,
+  .win95-tray {
+    padding: 2px 4px;
+    font-size: 9px;
+  }
+} 
+
+@media (min-width: 700px) {
+  .desk-root {
+    justify-content: center;
+  }
+
+  .desk-wall {
+    display: none;
+  }
 }
