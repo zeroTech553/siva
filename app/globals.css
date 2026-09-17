@@ -1187,9 +1187,8 @@
 
 /* Reference-inspired surround only: the CRT hardware stays unchanged. */
 .desk-root {
-  background-color: #b7ff2a;
-  background-image: radial-gradient(#111 0.75px, transparent 0.75px);
-  background-size: 7px 7px;
+  background-color: #f6f3eb;
+  background-image: none;
 }
 
 .desk-root::before,
@@ -1248,10 +1247,87 @@
 }
 
 .desk-caption {
+  top: 55px;
+  left: 24px;
+  width: min(46%, 300px);
   color: #111;
+  font-size: clamp(22px, 5vw, 36px);
+  line-height: 0.92;
+  text-overflow: clip;
+  white-space: normal;
+}
+
+.desk-caption::before {
+  content: 'POCKET COMPUTER  /  01';
+  display: block;
+  margin-bottom: 12px;
+  color: #16a6c8;
+  font-family: var(--font-mono);
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  line-height: 1;
+}
+
+.desk-caption::after {
+  max-width: 190px;
+  margin-top: 14px;
+  color: #111;
+  content: 'A real computer on your phone. Pair once, then use the desktop.';
+  font-family: var(--font-sans);
+  font-size: 9px;
+  font-weight: 500;
+  letter-spacing: 0;
+  line-height: 1.35;
+  text-transform: none;
+}
+
+.desk-machines {
+  width: min(52%, 360px);
+  height: min(49svh, 350px);
+  margin-left: auto;
+  margin-right: 8%;
+}
+
+.desk-board {
+  width: min(82%, 620px);
+  margin-left: auto;
+  margin-right: auto;
 }
 
 @media (max-width: 480px) {
+  .desk-caption {
+    top: 42px;
+    left: 18px;
+    width: calc(100% - 36px);
+    font-size: 24px;
+  }
+
+  .desk-caption::before {
+    margin-bottom: 8px;
+    font-size: 7px;
+  }
+
+  .desk-caption::after {
+    max-width: 170px;
+    margin-top: 8px;
+    font-size: 8px;
+  }
+
+  .desk-machines {
+    width: 92%;
+    height: min(37svh, 220px);
+    margin-top: 126px;
+    margin-right: auto;
+    margin-left: auto;
+  }
+
+  .desk-board {
+    width: calc(100% - 26px);
+    margin-right: auto;
+    margin-left: auto;
+  }
+
   .desk-root::before {
     top: 5px;
     right: 5px;
