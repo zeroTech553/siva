@@ -9,17 +9,17 @@ export function unixInstallScript(origin: string) {
   return `#!/usr/bin/env bash
 set -euo pipefail
 
-if [[ $# -ne 1 ]]; then
-  echo "Usage: bash forge-install.sh ABC-DEF-GHJ" >&2
-  exit 2
-fi
+	if [[ $# -lt 1 ]]; then
+	  echo "Usage: bash forge-install.sh ABC-DEF-GHJ [cli]" >&2
+	  exit 2
+	fi
 command -v python3 >/dev/null 2>&1 || { echo "Python 3 is required." >&2; exit 1; }
 command -v curl >/dev/null 2>&1 || { echo "curl is required." >&2; exit 1; }
 
 installer="\${TMPDIR:-/tmp}/forge-install-$$.py"
 trap 'rm -f "$installer"' EXIT
 curl -fsSL '${safeOrigin}/install.py' -o "$installer"
-python3 "$installer" "$1"
+	python3 "$installer" "$1" "\${2:-}"
 `
 }
 
@@ -45,7 +45,7 @@ if errorlevel 1 (
   echo Installer download failed from ${safeOrigin}. 1>&2
   exit /b 1
 )
-py.exe -3 "%FORGE_INSTALLER%" "%~1"
+	py.exe -3 "%FORGE_INSTALLER%" "%~1" "%~2"
 set "FORGE_EXIT=%ERRORLEVEL%"
 del /q "%FORGE_INSTALLER%" >nul 2>&1
 exit /b %FORGE_EXIT%
@@ -453,6 +453,8 @@ def prepare_cli():
         ("claude", ("claude",)),
         ("cursor", ("agent", "cursor-agent")),
         ("codex", ("codex",)),
+        ("opencode", ("opencode",)),
+        ("copilot", ("copilot",)),
         ("grok", ("grok",)),
     )
     for name, aliases in specs:
@@ -485,6 +487,10 @@ def prepare_cli():
         print("Cursor CLI found. If prompts fail, run: agent login")
     if "codex" in found:
         print("Codex CLI found. If prompts fail, run: codex login")
+    if "opencode" in found:
+        print("OpenCode CLI found. If prompts fail, run: opencode auth login")
+    if "copilot" in found:
+        print("GitHub Copilot CLI found. If prompts fail, run: copilot login")
     return found
 
 
@@ -496,6 +502,9 @@ def overlay_daemon():
     download("/api/forge/cli_launch.py", daemon / "cli_launch.py")
     download("/api/forge/cursor.py", providers / "cursor.py")
     download("/api/forge/antigravity.py", providers / "antigravity.py")
+    download("/api/forge/cli_provider.py", providers / "cli_provider.py")
+    download("/api/forge/opencode.py", providers / "opencode.py")
+    download("/api/forge/copilot.py", providers / "copilot.py")
     download("/api/forge/forge_hook.py", providers / "forge_hook.py")
     jobs = daemon / "jobs.py"
     text = jobs.read_text(encoding="utf-8")
@@ -563,7 +572,7 @@ def overlay_daemon():
         server.write_text(server_text.replace(ping_old, ping_new, 1), encoding="utf-8")
 
 
-def configure_daemon(found):
+def configure_daemon(found, preferred=""):
     daemon_home = Path.home() / ".agentremoted"
     daemon_home.mkdir(parents=True, exist_ok=True)
     config_path = daemon_home / "config.json"
@@ -571,7 +580,31 @@ def configure_daemon(found):
         config = json.loads(config_path.read_text(encoding="utf-8")) if config_path.exists() else {}
     except (OSError, ValueError):
         config = {}
-    names = ["antigravity", "claude", "cursor", "codex"]
+    aliases = {
+        "claude": "claude",
+        "claude-code": "claude",
+        "codex": "codex",
+        "openai": "codex",
+        "cursor": "cursor",
+        "agent": "cursor",
+        "cursor-agent": "cursor",
+        "opencode": "opencode",
+        "open-code": "opencode",
+        "copilot": "copilot",
+        "github": "copilot",
+        "gh": "copilot",
+        "github-copilot": "copilot",
+        "antigravity": "antigravity",
+        "agy": "antigravity",
+    }
+    preferred = aliases.get(str(preferred or "").strip().lower(), "")
+    order = ["antigravity", "claude", "cursor", "codex", "opencode", "copilot"]
+    names = []
+    if preferred:
+        names.append(preferred)
+    for name in order:
+        if name not in names:
+            names.append(name)
     for name in found:
         if name not in names:
             names.append(name)
@@ -579,7 +612,7 @@ def configure_daemon(found):
         "bind": "127.0.0.1",
         "port": DAEMON_PORT,
         "providers": names,
-        "provider": names[0],
+        "provider": preferred or (list(found.keys())[0] if found else names[0]),
         "permission_mode": "bypassPermissions",
         "codex_sandbox": "danger-full-access",
     })
@@ -593,6 +626,10 @@ def configure_daemon(found):
         config["cursor_bin"] = found["cursor"]
     if found.get("antigravity"):
         config["agy_bin"] = found["antigravity"]
+    if found.get("opencode"):
+        config["opencode_bin"] = found["opencode"]
+    if found.get("copilot"):
+        config["copilot_bin"] = found["copilot"]
     config_path.write_text(json.dumps(config, indent=2) + "\\n", encoding="utf-8")
 
 
@@ -731,9 +768,10 @@ def shell_quote(value):
 
 
 def main():
-    if len(sys.argv) != 2:
+    if len(sys.argv) < 2:
         fail("one pairing code is required")
     code = sys.argv[1].strip().replace("\\r", "").upper()
+    preferred = sys.argv[2].strip().lower() if len(sys.argv) > 2 else ""
     FORGE_HOME.mkdir(parents=True, exist_ok=True)
     kill_old_forge()
     print("Installing isolated Python environment...")
@@ -746,9 +784,9 @@ def main():
     found = prepare_cli()
     print("Installing pinned local daemon...")
     install_daemon()
-    print("Wiring Antigravity, Claude, Cursor, and Codex launchers...")
+    print("Wiring Claude, Codex, Cursor, OpenCode, and Copilot launchers...")
     overlay_daemon()
-    configure_daemon(found)
+    configure_daemon(found, preferred)
     print("Claiming pairing code...")
     credentials = claim(code)
     ws_url = str(credentials.get("workerWebSocketUrl") or "")

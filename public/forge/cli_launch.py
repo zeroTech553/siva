@@ -62,6 +62,24 @@ _FLAVOR_DEFAULTS = {
         "resume": True,
         "session": False,
     },
+    "opencode": {
+        "print_flag": None,
+        "output_format": False,
+        "force": False,
+        "skip_permissions": False,
+        "stream_partial": False,
+        "resume": False,
+        "session": True,
+    },
+    "copilot": {
+        "print_flag": "-p",
+        "output_format": True,
+        "force": False,
+        "skip_permissions": False,
+        "stream_partial": False,
+        "resume": False,
+        "session": False,
+    },
 }
 
 _SESSION_KEYS = (
@@ -96,6 +114,9 @@ def cli_dirs():
         home / ".local" / "bin",
         home / ".cursor" / "bin",
         home / ".antigravity" / "bin",
+        home / ".opencode" / "bin",
+        _localappdata() / "opencode",
+        _localappdata() / "GitHub Copilot CLI",
         Path(r"C:\Program Files\nodejs"),
         Path(r"C:\Program Files (x86)\nodejs"),
         Path("/usr/local/bin"),
@@ -145,6 +166,8 @@ def refresh_cli_bins(config):
         ("cursor_bin", ("agent", "cursor-agent")),
         ("codex_bin", ("codex",)),
         ("grok_bin", ("grok",)),
+        ("opencode_bin", ("opencode",)),
+        ("copilot_bin", ("copilot",)),
     )
     for attr, aliases in mapping:
         current = str(getattr(config, attr, "") or "")
@@ -179,6 +202,9 @@ def resolve_bin(name, env=None):
         "cursor": ["agent", "cursor-agent"],
         "agy": ["agy", "antigravity"],
         "antigravity": ["agy", "antigravity"],
+        "opencode": ["opencode"],
+        "copilot": ["copilot"],
+        "github": ["copilot"],
         "node": ["node"],
     }.get(stem.lower(), [stem])
     for alias in aliases:
@@ -309,6 +335,10 @@ def _flavor_key(flavor):
         return "cursor"
     if name == "claude":
         return "claude"
+    if name in ("opencode", "open-code"):
+        return "opencode"
+    if name in ("copilot", "github", "gh", "github-copilot"):
+        return "copilot"
     return name
 
 
@@ -319,9 +349,34 @@ def _use_flag(flags, name, flavor):
     return flags.get(name) or defaults.get(name)
 
 
+def _build_opencode_cmd(binary, prompt, session_id=""):
+    cmd = [binary, "run", "--format", "json", "--auto"]
+    sid = str(session_id or "").strip()
+    if sid:
+        cmd.extend(["--session", sid])
+    cmd.append(prompt)
+    return cmd
+
+
+def _build_copilot_cmd(binary, prompt):
+    return [
+        binary,
+        "-p",
+        prompt,
+        "--allow-all-tools",
+        "--silent",
+        "--output-format",
+        "json",
+    ]
+
+
 def build_headless_cmd(binary, prompt, session_id="", permission_mode="", flavor="generic"):
-    """Build argv for a non-interactive turn. Prompt is always last."""
+    """Build argv for a non-interactive turn."""
     flavor = _flavor_key(flavor)
+    if flavor == "opencode":
+        return _build_opencode_cmd(binary, prompt, session_id)
+    if flavor == "copilot":
+        return _build_copilot_cmd(binary, prompt)
     flags = detect_cli_flags(binary)
     defaults = _FLAVOR_DEFAULTS.get(flavor) or {}
     cmd = [binary]
@@ -460,6 +515,9 @@ def handle_stream_line(job, line):
         return
 
     session_id = _session_id(obj)
+    part = obj.get("part") if isinstance(obj.get("part"), dict) else {}
+    if not session_id:
+        session_id = str(obj.get("sessionID") or part.get("sessionID") or "")
     if session_id:
         _remember_session(job, session_id)
 
@@ -498,8 +556,10 @@ def handle_stream_line(job, line):
             or started.get("tool_name")
             or obj.get("name")
             or obj.get("tool")
+            or part.get("tool")
             or "tool"
         )
+        state = part.get("state") if isinstance(part.get("state"), dict) else {}
         detail = (
             started.get("args")
             or started.get("arguments")
@@ -507,6 +567,8 @@ def handle_stream_line(job, line):
             or obj.get("input")
             or obj.get("args")
             or obj.get("detail")
+            or state.get("input")
+            or state.get("output")
             or ""
         )
         _emit_tool(job, name, detail)

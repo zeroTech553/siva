@@ -113,7 +113,7 @@ export function providerAuth(ping: PingResponse | null, name: string): AuthHealt
 
 export function readyProviders(ping: PingResponse | null) {
   const names = pingProviders(ping)
-  const preferred = ['antigravity', 'claude', 'cursor', 'codex', 'grok']
+  const preferred = ['claude', 'codex', 'cursor', 'opencode', 'copilot', 'antigravity', 'grok']
   const ordered = [
     ...preferred.filter((name) => names.includes(name)),
     ...names.filter((name) => !preferred.includes(name)),
@@ -136,6 +136,8 @@ export function providerLabel(name: string) {
   if (name === 'cursor' || name === 'agent') return 'Cursor'
   if (name === 'antigravity' || name === 'agy') return 'Antigravity'
   if (name === 'codex') return 'Codex'
+  if (name === 'opencode' || name === 'open-code') return 'OpenCode'
+  if (name === 'copilot' || name === 'github' || name === 'gh') return 'GitHub Copilot'
   if (name === 'grok') return 'Grok'
   return name
 }
@@ -144,6 +146,8 @@ export function cliLoginCommand(name: string) {
   if (name === 'cursor' || name === 'agent') return 'agent login'
   if (name === 'antigravity' || name === 'agy') return 'agy'
   if (name === 'codex') return 'codex login'
+  if (name === 'opencode' || name === 'open-code') return 'opencode auth login'
+  if (name === 'copilot' || name === 'github' || name === 'gh') return 'copilot login'
   if (name === 'grok') return 'grok auth login'
   return 'claude login'
 }

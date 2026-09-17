@@ -7,6 +7,9 @@ const FILES: Record<string, string> = {
   'cli_launch.py': 'cli_launch.py',
   'cursor.py': 'cursor.py',
   'antigravity.py': 'antigravity.py',
+  'cli_provider.py': 'cli_provider.py',
+  'opencode.py': 'opencode.py',
+  'copilot.py': 'copilot.py',
   'forge_hook.py': 'forge_hook.py',
 }
 

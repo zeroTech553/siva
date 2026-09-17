@@ -1,15 +1,12 @@
 'use client'
 
 import { useCallback, useEffect, useRef, useState, type KeyboardEvent } from 'react'
-import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { SquareIcon } from 'lucide-react'
 import { ConsoleTranscript } from '@/components/console-transcript'
-import { Badge } from '@/components/ui/badge'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Spinner } from '@/components/ui/spinner'
-import { Textarea } from '@/components/ui/textarea'
+import { DeskComputer } from '@/components/desk-computer'
+import { LaptopTerminal } from '@/components/laptop-terminal'
+import { Win95Button, Win95Desktop, Win95Menu, Win95Taskbar, Win95Window } from '@/components/win95'
+import { cliOption } from '@/lib/cli-catalog'
 import {
   PERMISSION_MODES,
   cliSetupMessage,
@@ -65,8 +62,20 @@ export function ConsoleFrame() {
   const [events, setEvents] = useState<JobEvent[]>([])
   const [error, setError] = useState('')
   const [answering, setAnswering] = useState(false)
+  const [deskApp, setDeskApp] = useState<'agent' | 'terminal' | 'settings'>('agent')
+  const [startOpen, setStartOpen] = useState(false)
+  const [clock, setClock] = useState('--:--')
   const seqRef = useRef(0)
   const transcriptRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    const tick = () => {
+      setClock(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }))
+    }
+    tick()
+    const timer = window.setInterval(tick, 10000)
+    return () => window.clearInterval(timer)
+  }, [])
 
   const deviceId = session?.deviceId || ''
   const phoneSecret = session?.phoneSecret || ''
@@ -388,210 +397,194 @@ export function ConsoleFrame() {
 
   if (!ready) {
     return (
-      <main className="flex min-h-svh items-center justify-center text-sm text-muted-foreground">
-        Loading console…
-      </main>
+      <DeskComputer phosphor>
+        <p className="crt-boot-cursor p-3">Loading Forge desktop...</p>
+      </DeskComputer>
     )
   }
 
   const running = jobIsActive(job?.status)
   const working = sending || running || Boolean(jobId && (!job || jobIsActive(job.status)))
   const providers = pingProviders(ping)
+  const selected = cliOption(provider)
   const emptyHint = !online
     ? 'Laptop is offline. Keep this tab open and the Forge bridge running on that machine.'
     : !daemonOnline
       ? 'Bridge is connected, but the local agent daemon is not ready yet. Re-run the install command if this stays unavailable.'
       : cliMessage
         ? cliMessage
-        : 'Type a prompt and send it. Forge launches Antigravity on this laptop first, then Claude Code, Cursor, or Codex if those are installed.'
+        : `Type a prompt. Forge sends it to ${selected.name} on this laptop.`
+  const statusLine = `${online ? 'Online' : 'Offline'} · ${daemonOnline ? 'Daemon ready' : 'Daemon down'} · ${selected.name}`
 
   return (
-    <div className="forge-console flex h-svh flex-col bg-background">
-      <header className="flex items-center justify-between gap-3 border-b border-foreground/10 px-4 py-2">
-        <div className="flex min-w-0 items-center gap-3">
-          <Link href="/" className="shrink-0 font-mono text-[11px] tracking-[0.28em] text-muted-foreground">
-            FORGE
-          </Link>
-          <span className="truncate text-sm">{hostname}</span>
-          <Badge variant={online ? 'default' : 'secondary'}>{online ? 'Online' : 'Offline'}</Badge>
-          <Badge className="hidden sm:inline-flex" variant={daemonOnline ? 'secondary' : 'outline'}>
-            {daemonOnline ? 'Daemon ready' : 'Daemon unavailable'}
-          </Badge>
-          {ping?.provider ? (
-            <span className="hidden truncate font-mono text-[11px] text-muted-foreground md:inline">
-              {ping.provider}
-            </span>
-          ) : null}
-        </div>
-        <div className="flex shrink-0 items-center gap-2">
-          <Link href="/" className="text-sm text-muted-foreground hover:text-foreground">
-            Pairing
-          </Link>
-          <Button size="sm" variant="outline" onClick={resetPairing}>
-            Reset
-          </Button>
-        </div>
-      </header>
-
-      <div className="flex flex-wrap items-center gap-2 border-b border-foreground/10 px-4 py-2">
-        <label className="flex min-w-0 flex-1 items-center gap-2 text-xs text-muted-foreground">
-          <span className="shrink-0 uppercase tracking-wide">Project</span>
-          <select
-            className="h-8 min-w-0 flex-1 rounded-lg border border-input bg-transparent px-2 text-sm text-foreground"
-            value={cwd}
-            onChange={(event) => {
-              const next = event.target.value
-              setCwd(next)
-              setSessionId('')
-              writeConsolePrefs({ cwd: next, provider, sessionId: '' })
-            }}
-          >
-            {projects.map((project) => (
-              <option key={project.id} value={project.cwd}>
-                {project.name} {project.cwd ? `— ${project.cwd}` : ''}
-              </option>
-            ))}
-          </select>
-        </label>
-        {providers.length ? (
-          <label className="flex items-center gap-2 text-xs text-muted-foreground">
-            <span className="uppercase tracking-wide">CLI</span>
-            <select
-              className="h-8 rounded-lg border border-input bg-transparent px-2 text-sm text-foreground"
-              value={provider}
-              onChange={(event) => {
-                const next = event.target.value
-                setProvider(next)
-                setCliMessage(cliSetupMessage(ping, next))
-                writeConsolePrefs({ cwd, provider: next, sessionId })
-              }}
-            >
-              {providers.map((name) => (
-                <option key={name} value={name}>
-                  {providerLabel(name)}
-                </option>
-              ))}
-            </select>
-          </label>
-        ) : null}
-        <label className="flex items-center gap-2 text-xs text-muted-foreground">
-          <span className="uppercase tracking-wide">Mode</span>
-          <select
-            className="h-8 rounded-lg border border-input bg-transparent px-2 text-sm text-foreground"
-            value={permissionMode}
-            onChange={(event) => setPermissionMode(event.target.value)}
-          >
-            {PERMISSION_MODES.map((mode) => (
-              <option key={mode.id || 'default'} value={mode.id}>
-                {mode.label}
-              </option>
-            ))}
-          </select>
-        </label>
-        <Button size="sm" variant="ghost" onClick={startNewChat}>
-          New chat
-        </Button>
-      </div>
-
-      <div className="border-b border-foreground/10 px-4 py-2">
-        <Input
-          value={cwd}
-          onChange={(event) => setCwd(event.target.value)}
-          placeholder="Laptop working directory (defaults to the whole user profile)"
-          aria-label="Working directory"
-          className="font-mono text-xs"
-        />
-      </div>
-      {cliMessage ? (
-        <p className="border-b border-foreground/10 px-4 py-2 text-sm text-destructive">{cliMessage}</p>
-      ) : null}
-
-      <div ref={transcriptRef} className="min-h-0 flex-1 overflow-y-auto">
-        <ConsoleTranscript events={events} emptyHint={emptyHint} />
-        {job?.pending_permission ? (
-          <section className="mx-4 mb-4 rounded-xl bg-card p-4 ring-1 ring-foreground/10">
-            <p className="font-mono text-[11px] tracking-[0.18em] text-muted-foreground uppercase">Permission</p>
-            <p className="mt-2 text-sm">
-              Allow {job.pending_permission.tool_name || 'this tool'}
-              {job.pending_permission.detail ? ` — ${job.pending_permission.detail}` : ''}?
-            </p>
-            <div className="mt-3 flex gap-2">
-              <Button size="sm" onClick={() => void answerPermission(true)} disabled={answering}>
-                Allow
-              </Button>
-              <Button size="sm" variant="outline" onClick={() => void answerPermission(false)} disabled={answering}>
-                Deny
-              </Button>
-            </div>
-          </section>
-        ) : null}
-        {job?.pending_question?.questions?.length ? (
-          <section className="mx-4 mb-4 rounded-xl bg-card p-4 ring-1 ring-foreground/10">
-            {job.pending_question.questions.map((question, index) => (
-              <div key={`${job.pending_question?.request_id}-${index}`} className="flex flex-col gap-2">
-                <p className="text-sm font-medium">{questionLabel(question)}</p>
-                <div className="flex flex-wrap gap-2">
-                  {(question.options || []).map((option) => {
-                    const label = optionLabel(option)
-                    return (
-                      <Button
-                        key={label}
-                        size="sm"
-                        variant="outline"
-                        disabled={answering}
-                        onClick={() => void answerQuestion(question, label)}
-                      >
-                        {label}
-                      </Button>
-                    )
-                  })}
-                </div>
+    <DeskComputer caption={hostname}>
+      <Win95Desktop>
+        {deskApp === 'agent' ? (
+          <Win95Window title={`${selected.name} — Agent`} status={statusLine}>
+            <div className="flex h-full min-h-0 flex-col">
+              <div ref={transcriptRef} className="min-h-0 flex-1 overflow-y-auto bg-input">
+                <ConsoleTranscript events={events} emptyHint={emptyHint} />
+                {job?.pending_permission ? (
+                  <section className="m-2 bg-card p-2">
+                    <p className="text-xs">
+                      Allow {job.pending_permission.tool_name || 'this tool'}
+                      {job.pending_permission.detail ? ` — ${job.pending_permission.detail}` : ''}?
+                    </p>
+                    <div className="mt-2 flex gap-2">
+                      <Win95Button onClick={() => void answerPermission(true)}>Allow</Win95Button>
+                      <Win95Button onClick={() => void answerPermission(false)}>Deny</Win95Button>
+                    </div>
+                  </section>
+                ) : null}
+                {job?.pending_question?.questions?.length ? (
+                  <section className="m-2 bg-card p-2">
+                    {job.pending_question.questions.map((question, index) => (
+                      <div key={`${job.pending_question?.request_id}-${index}`} className="flex flex-col gap-2">
+                        <p className="text-xs">{questionLabel(question)}</p>
+                        <div className="flex flex-wrap gap-2">
+                          {(question.options || []).map((option) => {
+                            const label = optionLabel(option)
+                            return (
+                              <Win95Button key={label} onClick={() => void answerQuestion(question, label)}>
+                                {label}
+                              </Win95Button>
+                            )
+                          })}
+                        </div>
+                      </div>
+                    ))}
+                    <Win95Button onClick={() => void cancelQuestion()}>Skip</Win95Button>
+                  </section>
+                ) : null}
               </div>
-            ))}
-            <Button className="mt-3" size="sm" variant="ghost" onClick={() => void cancelQuestion()} disabled={answering}>
-              Skip
-            </Button>
-          </section>
+              {error ? <p className="px-2 py-1 text-xs">{error}</p> : null}
+              <form
+                className="flex flex-col gap-2 border-t border-foreground p-2"
+                onSubmit={(event) => {
+                  event.preventDefault()
+                  void sendPrompt()
+                }}
+              >
+                <textarea
+                  value={prompt}
+                  onChange={(event) => setPrompt(event.target.value)}
+                  onKeyDown={onComposerKeyDown}
+                  placeholder={daemonOnline ? `Ask ${selected.name}…` : 'Waiting for the laptop daemon…'}
+                  disabled={!online}
+                  className="min-h-16 w-full resize-none bg-input p-2 font-sans text-sm text-foreground outline-none"
+                  aria-label="Prompt"
+                />
+                <div className="flex flex-wrap gap-2">
+                  {working ? (
+                    <Win95Button onClick={() => void stopJob()}>Stop</Win95Button>
+                  ) : (
+                    <Win95Button type="submit">Send</Win95Button>
+                  )}
+                  <Win95Button onClick={startNewChat}>New chat</Win95Button>
+                </div>
+              </form>
+            </div>
+          </Win95Window>
         ) : null}
-      </div>
-
-      {error ? <p className="px-4 pb-2 text-sm text-destructive">{error}</p> : null}
-
-      <form
-        className="border-t border-foreground/10 p-4"
-        onSubmit={(event) => {
-          event.preventDefault()
-          void sendPrompt()
-        }}
-      >
-        <div className="flex items-end gap-2">
-          <Textarea
-            value={prompt}
-            onChange={(event) => setPrompt(event.target.value)}
-            onKeyDown={onComposerKeyDown}
-            placeholder={daemonOnline ? 'Ask the agent on this laptop…' : 'Waiting for the laptop daemon…'}
-            disabled={!online}
-            className="min-h-20 flex-1 resize-none"
-            aria-label="Prompt"
+        {deskApp === 'terminal' && deviceId && phoneSecret ? (
+          <Win95Window title="MS-DOS Prompt" status={cwd || hostname}>
+            <LaptopTerminal deviceId={deviceId} phoneSecret={phoneSecret} cwd={cwd} />
+          </Win95Window>
+        ) : null}
+        {deskApp === 'settings' ? (
+          <Win95Window title="Control Panel" status={statusLine}>
+            <div className="flex flex-col gap-3 bg-input p-3 text-xs">
+              <label className="flex flex-col gap-1">
+                Project
+                <select
+                  className="h-8 border border-foreground bg-card px-2"
+                  value={cwd}
+                  onChange={(event) => {
+                    const next = event.target.value
+                    setCwd(next)
+                    setSessionId('')
+                    writeConsolePrefs({ cwd: next, provider, sessionId: '' })
+                  }}
+                >
+                  {projects.map((project) => (
+                    <option key={project.id} value={project.cwd}>
+                      {project.name} {project.cwd ? `- ${project.cwd}` : ''}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="flex flex-col gap-1">
+                Working directory
+                <input
+                  value={cwd}
+                  onChange={(event) => setCwd(event.target.value)}
+                  className="h-8 border border-foreground bg-card px-2 font-mono"
+                  aria-label="Working directory"
+                />
+              </label>
+              {providers.length ? (
+                <label className="flex flex-col gap-1">
+                  CLI
+                  <select
+                    className="h-8 border border-foreground bg-card px-2"
+                    value={provider}
+                    onChange={(event) => {
+                      const next = event.target.value
+                      setProvider(next)
+                      setCliMessage(cliSetupMessage(ping, next))
+                      writeConsolePrefs({ cwd, provider: next, sessionId })
+                    }}
+                  >
+                    {providers.map((name) => (
+                      <option key={name} value={name}>
+                        {providerLabel(name)}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              ) : null}
+              <label className="flex flex-col gap-1">
+                Mode
+                <select
+                  className="h-8 border border-foreground bg-card px-2"
+                  value={permissionMode}
+                  onChange={(event) => setPermissionMode(event.target.value)}
+                >
+                  {PERMISSION_MODES.map((mode) => (
+                    <option key={mode.id || 'default'} value={mode.id}>
+                      {mode.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              {cliMessage ? <p>{cliMessage}</p> : null}
+              <Win95Button onClick={() => void resetPairing()}>Reset pairing</Win95Button>
+            </div>
+          </Win95Window>
+        ) : null}
+        {startOpen ? (
+          <Win95Menu
+            items={[
+              { id: 'agent', label: `${selected.name}`, onClick: () => { setDeskApp('agent'); setStartOpen(false) } },
+              { id: 'terminal', label: 'MS-DOS Prompt', onClick: () => { setDeskApp('terminal'); setStartOpen(false) } },
+              { id: 'settings', label: 'Control Panel', onClick: () => { setDeskApp('settings'); setStartOpen(false) } },
+              { id: 'pair', label: 'Pairing', onClick: () => router.push('/') },
+              { id: 'reset', label: 'Reset', onClick: () => void resetPairing() },
+            ]}
           />
-          <div className="flex flex-col gap-2">
-            {working ? (
-              <Button type="button" variant="outline" onClick={() => void stopJob()} disabled={!jobId}>
-                <SquareIcon data-icon="inline-start" />
-                Stop
-              </Button>
-            ) : null}
-            <Button type="submit" disabled={working || !online || !daemonOnline || !prompt.trim()}>
-              {sending ? <Spinner data-icon="inline-start" /> : null}
-              Send
-            </Button>
-          </div>
-        </div>
-        <p className="mt-2 text-xs text-muted-foreground">
-          Enter to send, Shift+Enter for a new line. The laptop CLI receives the prompt and can work anywhere on this machine.
-        </p>
-      </form>
-    </div>
+        ) : null}
+        <Win95Taskbar
+          startOpen={startOpen}
+          onToggleStart={() => setStartOpen((open) => !open)}
+          clock={clock}
+          items={[
+            { id: 'agent', label: 'Agent', active: deskApp === 'agent', onClick: () => setDeskApp('agent') },
+            { id: 'terminal', label: 'Term', active: deskApp === 'terminal', onClick: () => setDeskApp('terminal') },
+            { id: 'settings', label: 'Setup', active: deskApp === 'settings', onClick: () => setDeskApp('settings') },
+          ]}
+        />
+      </Win95Desktop>
+    </DeskComputer>
   )
 }
 
