@@ -1,24 +1,52 @@
 'use client'
 
 import { useRef, useState, type PointerEvent, type ReactNode } from 'react'
-import { playBoot, playClick } from '@/lib/desk-sound'
+import { playBoot, playClick, playDisk, playError, playPower, resetBoot, stopSong } from '@/lib/desk-sound'
+
+const KEY_ROWS: Array<Array<{ key: string; label: string; span?: number }>> = [
+  ['1', '2', '3', '4', '5', '6', '7', '8', '9', '0'].map((key) => ({ key, label: key })),
+  ['q', 'w', 'e', 'r', 't', 'y', 'u', 'i', 'o', 'p'].map((key) => ({ key, label: key })),
+  [
+    ...['a', 's', 'd', 'f', 'g', 'h', 'j', 'k', 'l'].map((key) => ({ key, label: key })),
+    { key: 'Backspace', label: 'BS' },
+  ],
+  [
+    { key: ' ', label: 'SPACE', span: 7 },
+    { key: 'Enter', label: 'ENT', span: 3 },
+  ],
+]
 
 type DeskComputerProps = {
   children: ReactNode
   phosphor?: boolean
   caption?: string
   wallpaper?: boolean
+  busy?: boolean
+  onCd?: () => void
+  onReset?: () => void
 }
 
-export function DeskComputer({ children, phosphor = false, caption, wallpaper = false }: DeskComputerProps) {
+export function DeskComputer({
+  children,
+  phosphor = false,
+  caption,
+  wallpaper = false,
+  busy = false,
+  onCd,
+  onReset,
+}: DeskComputerProps) {
   const deskRef = useRef<HTMLElement>(null)
   const screenRef = useRef<HTMLDivElement>(null)
   const dragRef = useRef<{ pointerId: number; lastX: number; lastY: number; moved: number } | null>(null)
   const pointerRef = useRef({ x: 48, y: 42 })
-  const [mouse, setMouse] = useState({ x: 72, y: 0 })
+  const [mouse, setMouse] = useState({ x: 78, y: 3 })
   const [pointer, setPointer] = useState({ x: 48, y: 42 })
   const [dragging, setDragging] = useState(false)
   const [pressed, setPressed] = useState(false)
+  const [powered, setPowered] = useState(true)
+  const [brightness, setBrightness] = useState(1)
+  const [cdOpen, setCdOpen] = useState(false)
+  const [floppyFlash, setFloppyFlash] = useState(false)
 
   function setCursor(next: { x: number; y: number }) {
     pointerRef.current = next
@@ -26,6 +54,7 @@ export function DeskComputer({ children, phosphor = false, caption, wallpaper = 
   }
 
   function clickThrough() {
+    if (!powered) return
     const screen = screenRef.current
     if (!screen) return
     const box = screen.getBoundingClientRect()
@@ -48,19 +77,18 @@ export function DeskComputer({ children, phosphor = false, caption, wallpaper = 
     drag.moved += Math.abs(dx) + Math.abs(dy)
     const box = desk.getBoundingClientRect()
     setMouse({
-      x: Math.min(84, Math.max(8, ((event.clientX - 18 - box.left) / box.width) * 100)),
-      y: Math.min(24, Math.max(0, ((box.bottom - event.clientY - 22) / box.height) * 100)),
+      x: Math.min(86, Math.max(8, ((event.clientX - 18 - box.left) / box.width) * 100)),
+      y: Math.min(16, Math.max(0, ((box.bottom - event.clientY - 18) / box.height) * 100)),
     })
     setCursor({
-      x: Math.min(96, Math.max(3, pointerRef.current.x + (dx / box.width) * 160)),
-      y: Math.min(94, Math.max(3, pointerRef.current.y + (dy / box.height) * 160)),
+      x: Math.min(96, Math.max(3, pointerRef.current.x + (dx / box.width) * 180)),
+      y: Math.min(94, Math.max(3, pointerRef.current.y + (dy / box.height) * 180)),
     })
   }
 
   function onMousePointerDown(event: PointerEvent<HTMLButtonElement>) {
     event.preventDefault()
     event.stopPropagation()
-    void playBoot()
     setPressed(true)
     setDragging(true)
     dragRef.current = {
@@ -82,40 +110,181 @@ export function DeskComputer({ children, phosphor = false, caption, wallpaper = 
     if (wasClick) clickThrough()
   }
 
+  function togglePower() {
+    void playPower()
+    if (powered) {
+      resetBoot()
+      stopSong()
+      setPowered(false)
+      return
+    }
+    setPowered(true)
+    void playBoot()
+  }
+
+  function resetMachine() {
+    void playPower()
+    setPowered(true)
+    resetBoot()
+    void playBoot()
+    onReset?.()
+  }
+
+  function insertCd() {
+    void playDisk()
+    setCdOpen((open) => !open)
+    if (!cdOpen) onCd?.()
+  }
+
+  function punchFloppy() {
+    void playDisk()
+    void playError()
+    setFloppyFlash(true)
+    window.setTimeout(() => setFloppyFlash(false), 700)
+  }
+
+  function typeKey(key: string) {
+    void playClick()
+    const el = document.activeElement
+    if (!(el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement)) return
+    if (key === 'Enter') {
+      el.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true }))
+      return
+    }
+    const proto = el instanceof HTMLTextAreaElement ? HTMLTextAreaElement.prototype : HTMLInputElement.prototype
+    const setter = Object.getOwnPropertyDescriptor(proto, 'value')?.set
+    const next = key === 'Backspace' ? el.value.slice(0, -1) : el.value + key
+    setter?.call(el, next)
+    el.dispatchEvent(new Event('input', { bubbles: true }))
+  }
+
+  const glassClass = phosphor
+    ? 'crt-glass crt-glass-phosphor'
+    : wallpaper
+      ? 'crt-glass crt-glass-wallpaper'
+      : 'crt-glass'
+
   return (
-    <main
-      ref={deskRef}
-      className="desk-root"
-      onPointerMove={onDeskPointerMove}
-      onPointerDown={() => {
-        void playBoot()
-      }}
-    >
-      <section className="crt-chassis">
-        <div className="crt-bezel">
-          <div
-            ref={screenRef}
-            className={phosphor ? 'crt-glass crt-glass-phosphor' : wallpaper ? 'crt-glass crt-glass-wallpaper' : 'crt-glass'}
-          >
-            <div className="crt-scanlines" aria-hidden="true" />
-            <div className="crt-screen-body">{children}</div>
-            <span className="crt-pointer" style={{ left: `${pointer.x}%`, top: `${pointer.y}%` }} aria-hidden="true" />
+    <main ref={deskRef} className="desk-root" onPointerMove={onDeskPointerMove}>
+      <div className="desk-wall" aria-hidden="true">
+        <div className="desk-blinds" />
+      </div>
+      {caption ? <p className="desk-caption">{caption}</p> : null}
+
+      <section className="desk-machines">
+        <div className="crt-unit">
+          <div className="crt-bezel">
+            <div ref={screenRef} className={powered ? glassClass : 'crt-glass crt-glass-off'}>
+              {powered ? (
+                <>
+                  <div className="crt-scanlines" aria-hidden="true" />
+                  <div className="crt-screen-body" style={{ filter: `brightness(${brightness})` }}>
+                    {children}
+                  </div>
+                  <span
+                    className="crt-pointer"
+                    style={{ left: `${pointer.x}%`, top: `${pointer.y}%` }}
+                    aria-hidden="true"
+                  />
+                </>
+              ) : (
+                <div className="crt-off" />
+              )}
+            </div>
+            <div className="crt-chin">
+              <span>FORGE</span>
+              <div className="crt-knobs">
+                <button
+                  type="button"
+                  className={powered ? 'crt-knob crt-knob-on' : 'crt-knob'}
+                  aria-label="Monitor power"
+                  onClick={togglePower}
+                />
+                <button
+                  type="button"
+                  className="crt-knob"
+                  aria-label="Brightness down"
+                  onClick={() => setBrightness((value) => Math.max(0.45, Number((value - 0.15).toFixed(2))))}
+                />
+                <button
+                  type="button"
+                  className="crt-knob"
+                  aria-label="Brightness up"
+                  onClick={() => setBrightness((value) => Math.min(1.35, Number((value + 0.15).toFixed(2))))}
+                />
+              </div>
+            </div>
+          </div>
+          <div className="crt-stand" aria-hidden="true">
+            <span className="crt-neck" />
+            <span className="crt-base" />
           </div>
         </div>
-        <div className="crt-badge">
-          <span>FORGE</span>
-          <span>486DX</span>
+
+        <aside className="tower">
+          <p className="tower-brand">486DX</p>
+          <button
+            type="button"
+            className={cdOpen ? 'tower-drive is-open' : 'tower-drive'}
+            aria-label={cdOpen ? 'Close CD-ROM tray' : 'Open CD-ROM tray'}
+            onClick={insertCd}
+          >
+            <span className="tower-drive-slot" />
+            <span>CD</span>
+          </button>
+          <button
+            type="button"
+            className={floppyFlash ? 'tower-drive is-flash' : 'tower-drive'}
+            aria-label="Floppy drive"
+            onClick={punchFloppy}
+          >
+            <span className="tower-drive-slot" />
+            <span>3.5</span>
+          </button>
+          <div className="tower-leds">
+            <span className={powered ? 'tower-led is-on' : 'tower-led'} title="Power" />
+            <span className={busy && powered ? 'tower-led is-hdd' : 'tower-led'} title="Hard disk" />
+          </div>
+          <button type="button" className="tower-reset" onClick={resetMachine}>
+            RST
+          </button>
+          <button
+            type="button"
+            className={powered ? 'tower-power is-on' : 'tower-power'}
+            aria-label="Computer power"
+            onClick={togglePower}
+          />
+        </aside>
+      </section>
+
+      <section className="desk-board">
+        <div className="desk-keyboard">
+          {KEY_ROWS.map((row, rowIndex) => (
+            <div key={rowIndex} className="desk-key-row">
+              {row.map((item) => (
+                <button
+                  key={item.label}
+                  type="button"
+                  className="desk-key"
+                  style={item.span ? { flex: item.span } : undefined}
+                  aria-label={item.key === ' ' ? 'Space' : item.key}
+                  onPointerDown={(event) => {
+                    event.preventDefault()
+                    typeKey(item.key)
+                  }}
+                >
+                  {item.label}
+                </button>
+              ))}
+            </div>
+          ))}
         </div>
       </section>
-      <div className="desk-keyboard" aria-hidden="true">
-        {Array.from({ length: 28 }, (_, index) => (
-          <span key={index} />
-        ))}
-      </div>
+
       <button
         type="button"
         className={dragging ? 'desk-mouse desk-mouse-drag' : 'desk-mouse'}
-        style={{ left: `${mouse.x}%`, bottom: `${8 + mouse.y}%` }}
+        style={{ left: `${mouse.x}%`, bottom: `${6 + mouse.y}%` }}
         aria-label="Computer mouse. Drag to move the pointer, tap to click."
         onPointerDown={onMousePointerDown}
         onPointerUp={onMousePointerUp}
@@ -123,7 +292,6 @@ export function DeskComputer({ children, phosphor = false, caption, wallpaper = 
       >
         <span className={pressed ? 'desk-mouse-btn desk-mouse-btn-down' : 'desk-mouse-btn'} />
       </button>
-      {caption ? <p className="desk-caption">{caption}</p> : null}
     </main>
   )
 }

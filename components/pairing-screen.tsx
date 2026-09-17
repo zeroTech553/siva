@@ -193,7 +193,9 @@ export function PairingScreen() {
     <DeskComputer
       phosphor={introStep === 0}
       wallpaper={introStep > 0}
-      caption="Drag the mouse, tap it to click"
+      caption="Mouse, CPU, disk, knobs, keys"
+      onCd={() => void playDing()}
+      onReset={() => setIntroStep(0)}
     >
       {introStep === 0 ? (
         <button type="button" className="crt-boot" onClick={() => setIntroStep(1)}>

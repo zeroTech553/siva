@@ -41,6 +41,10 @@ export async function playClick() {
   buzz(ctx, 1400, ctx.currentTime, 0.035, 0.035, 'square')
 }
 
+export function resetBoot() {
+  booted = false
+}
+
 export async function playBoot() {
   const ctx = context()
   if (!ctx || booted) return
@@ -51,6 +55,25 @@ export async function playBoot() {
   buzz(ctx, 523, now + 0.12, 0.2, 0.055, 'triangle')
   buzz(ctx, 659, now + 0.26, 0.28, 0.06, 'triangle')
   buzz(ctx, 784, now + 0.42, 0.42, 0.05, 'sine')
+}
+
+export async function playPower() {
+  const ctx = context()
+  if (!ctx) return
+  await unlockDeskSound()
+  const now = ctx.currentTime
+  buzz(ctx, 90, now, 0.16, 0.05, 'sine')
+  buzz(ctx, 220, now + 0.08, 0.1, 0.04, 'square')
+}
+
+export async function playDisk() {
+  const ctx = context()
+  if (!ctx) return
+  await unlockDeskSound()
+  const now = ctx.currentTime
+  buzz(ctx, 180, now, 0.07, 0.045, 'square')
+  buzz(ctx, 120, now + 0.08, 0.12, 0.04, 'square')
+  buzz(ctx, 90, now + 0.16, 0.08, 0.03, 'triangle')
 }
 
 export async function playError() {

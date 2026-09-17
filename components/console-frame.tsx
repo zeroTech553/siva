@@ -430,7 +430,13 @@ export function ConsoleFrame() {
   }
 
   return (
-    <DeskComputer wallpaper caption="Drag the mouse, tap it to click">
+    <DeskComputer
+      wallpaper
+      busy={working}
+      caption="Mouse, CPU, disk, knobs, keys"
+      onCd={() => openApp('player')}
+      onReset={() => openApp('desktop')}
+    >
       <Win95Desktop>
         {deskApp === 'desktop' ? (
           <Win95Icons
