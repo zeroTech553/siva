@@ -5,7 +5,7 @@ import { DESK_SONGS, playDing, playSong, stopSong } from '@/lib/desk-sound'
 import { Win95Button } from '@/components/win95'
 
 export function CdPlayer() {
-  const [current, setCurrent] = useState<string>(DESK_SONGS[0].id)
+  const [current, setCurrent] = useState<(typeof DESK_SONGS)[number]['id']>(DESK_SONGS[0].id)
   const [playing, setPlaying] = useState(false)
   const track = DESK_SONGS.find((song) => song.id === current) || DESK_SONGS[0]
 
@@ -17,7 +17,7 @@ export function CdPlayer() {
         <select
           value={current}
           onChange={(event) => {
-            const next = event.target.value
+            const next = event.target.value as (typeof DESK_SONGS)[number]['id']
             setCurrent(next)
             if (playing) void playSong(next)
           }}
