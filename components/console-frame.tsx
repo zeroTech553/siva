@@ -433,7 +433,7 @@ export function ConsoleFrame() {
     <DeskComputer
       wallpaper
       busy={working}
-      caption="Mouse, CPU, disk, knobs, keys"
+      caption="Your computer, in your pocket."
       onCd={() => openApp('player')}
       onReset={() => openApp('desktop')}
     >

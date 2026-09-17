@@ -193,7 +193,7 @@ export function PairingScreen() {
     <DeskComputer
       phosphor={introStep === 0}
       wallpaper={introStep > 0}
-      caption="Mouse, CPU, disk, knobs, keys"
+      caption="Your computer, in your pocket."
       onCd={() => void playDing()}
       onReset={() => setIntroStep(0)}
     >

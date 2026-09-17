@@ -192,7 +192,7 @@ export function DeskComputer({
               )}
             </div>
             <div className="crt-chin">
-              <span>FORGE</span>
+              <span>POCKET COMPUTER</span>
               <div className="crt-knobs">
                 <button
                   type="button"

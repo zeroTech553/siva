@@ -207,14 +207,36 @@
 .desk-caption {
   position: absolute;
   top: 10px;
-  right: 8px;
-  width: 140px;
+  left: 12px;
+  z-index: 2;
+  width: min(52vw, 250px);
   margin: 0;
-  text-align: right;
-  font-size: 9px;
+  overflow: hidden;
+  color: var(--foreground);
+  text-align: left;
+  font-size: clamp(17px, 4vw, 27px);
+  font-weight: 900;
+  letter-spacing: -0.06em;
+  line-height: 0.94;
+  text-overflow: ellipsis;
+  text-transform: none;
+  white-space: nowrap;
+}
+
+.desk-caption::first-line {
+  color: var(--foreground);
+} 
+
+.desk-caption::after {
+  content: '  /  ready to connect';
+  display: block;
+  margin-top: 7px;
+  color: var(--primary);
+  font-family: var(--font-mono);
+  font-size: 8px;
   font-weight: 700;
-  letter-spacing: 0.06em;
-  line-height: 1.35;
+  letter-spacing: 0.08em;
+  line-height: 1.2;
   text-transform: uppercase;
 }
 
@@ -1052,14 +1074,22 @@
 
   .desk-caption {
     top: 6px;
-    right: 5px;
-    width: 105px;
-    font-size: 7px;
+    right: auto;
+    left: 8px;
+    width: min(58vw, 190px);
+    font-size: 17px;
+    line-height: 0.94;
+  }
+
+  .desk-caption::after {
+    margin-top: 4px;
+    font-size: 6px;
   }
 
   .desk-machines {
     width: 100%;
     height: min(43svh, 245px);
+    margin-top: 42px;
     gap: 5px;
     padding: 0 4px;
   }
