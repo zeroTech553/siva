@@ -1189,6 +1189,33 @@
 .desk-root {
   background-color: #f6f3eb;
   background-image: none;
+  padding: 42px 16px 18px;
+}
+
+.desk-root::before {
+  top: 16px;
+  right: 16px;
+  bottom: 16px;
+  left: 16px;
+  border: 2px solid #111;
+  background: #f6f3eb;
+  box-shadow: 4px 4px 0 #111;
+}
+
+.desk-root::after {
+  top: 16px;
+  right: 16px;
+  left: 16px;
+  height: 27px;
+  border-bottom: 2px solid #111;
+  background: #f6f3eb;
+  content: '▣  POCKET COMPUTER                                      READY  ●  01';
+  padding: 7px 10px;
+  color: #111;
+  font-family: var(--font-mono);
+  font-size: 7px;
+  letter-spacing: 0.08em;
+  white-space: pre;
 }
 
 .desk-root::before,
@@ -1247,9 +1274,9 @@
 }
 
 .desk-caption {
-  top: 55px;
-  left: 24px;
-  width: min(46%, 300px);
+  top: 86px;
+  left: 32px;
+  width: min(42%, 260px);
   color: #111;
   font-size: clamp(22px, 5vw, 36px);
   line-height: 0.92;
@@ -1283,10 +1310,11 @@
 }
 
 .desk-machines {
-  width: min(52%, 360px);
-  height: min(49svh, 350px);
+  width: min(46%, 340px);
+  height: min(45svh, 310px);
+  margin-top: 22px;
   margin-left: auto;
-  margin-right: 8%;
+  margin-right: 10%;
 }
 
 .desk-board {
@@ -1296,11 +1324,33 @@
 }
 
 @media (max-width: 480px) {
+  .desk-root {
+    padding: 34px 9px 10px;
+  }
+
+  .desk-root::before {
+    top: 7px;
+    right: 7px;
+    bottom: 7px;
+    left: 7px;
+    border-width: 2px;
+    box-shadow: 3px 3px 0 #111;
+  }
+
+  .desk-root::after {
+    top: 7px;
+    right: 7px;
+    left: 7px;
+    height: 21px;
+    padding: 5px 6px;
+    font-size: 5px;
+  }
+
   .desk-caption {
-    top: 42px;
-    left: 18px;
-    width: calc(100% - 36px);
-    font-size: 24px;
+    top: 58px;
+    left: 17px;
+    width: 61%;
+    font-size: 20px;
   }
 
   .desk-caption::before {
@@ -1315,10 +1365,10 @@
   }
 
   .desk-machines {
-    width: 92%;
-    height: min(37svh, 220px);
-    margin-top: 126px;
-    margin-right: auto;
+    width: 42%;
+    height: min(30svh, 180px);
+    margin-top: 88px;
+    margin-right: 9%;
     margin-left: auto;
   }
 
