@@ -4,7 +4,12 @@ import os
 from pathlib import Path
 
 from . import RunnerError
-from ..cli_launch import handle_stream_line, resolve_bin
+from ..cli_launch import (
+    build_headless_cmd,
+    finalize_job,
+    handle_stream_line,
+    resolve_bin,
+)
 
 
 class CursorStore:
@@ -53,7 +58,8 @@ class CursorRunner:
             "cli_on_path": on_path,
             "mode": "subscription",
             "status": "ok" if on_path else "missing",
-            "detail": path or "Cursor CLI (`agent`) is not on PATH — run the Cursor install script, then `agent login`",
+            "detail": path
+            or "Cursor CLI (`agent`) is not on PATH — run the Cursor install script, then `agent login`",
         }
 
     def slash_commands(self):
@@ -69,9 +75,13 @@ class CursorRunner:
             raise RunnerError("Cursor CLI not found. Install it, then run: agent login")
         if not job.cwd:
             job.cwd = str(Path.home())
-        cmd = [binary, "-p", job.prompt, "--output-format", "stream-json"]
-        if mode in ("bypassPermissions", "acceptEdits", ""):
-            cmd.append("--force")
+        cmd = build_headless_cmd(
+            binary,
+            job.prompt,
+            session_id=getattr(job, "session_id", "") or "",
+            permission_mode=mode,
+            flavor="cursor",
+        )
         env = dict(os.environ)
         extra = getattr(self.config, "cursor_env", None) or {}
         env.update({str(k): str(v) for k, v in extra.items()})
@@ -84,7 +94,7 @@ class CursorRunner:
         return None
 
     def finalize(self, job, returncode, stderr_tail):
-        return None
+        return finalize_job(job, returncode, stderr_tail)
 
     def cleanup(self, job):
         return None

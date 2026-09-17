@@ -496,6 +496,7 @@ def overlay_daemon():
     download("/api/forge/cli_launch.py", daemon / "cli_launch.py")
     download("/api/forge/cursor.py", providers / "cursor.py")
     download("/api/forge/antigravity.py", providers / "antigravity.py")
+    download("/api/forge/forge_hook.py", providers / "forge_hook.py")
     jobs = daemon / "jobs.py"
     text = jobs.read_text(encoding="utf-8")
     old = "            proc = subprocess.Popen(cmd, **popen_kw)"
@@ -510,20 +511,41 @@ def overlay_daemon():
         jobs.write_text(text.replace(old, new, 1), encoding="utf-8")
     init = providers / "__init__.py"
     init_text = init.read_text(encoding="utf-8")
-    if "CursorRunner" not in init_text:
-        needle = "    if store is not None:"
+    if "forge_hook" not in init_text:
+        needle = "    name = str(name or \\"claude\\").lower()"
         insert = (
-            "    elif name in (\\"cursor\\", \\"agent\\"):\\n"
-            "        from .cursor import CursorRunner, CursorStore\\n"
-            "        store, runner = CursorStore(config), CursorRunner(config)\\n"
-            "    elif name in (\\"antigravity\\", \\"agy\\"):\\n"
-            "        from .antigravity import AntigravityRunner, AntigravityStore\\n"
-            "        store, runner = AntigravityStore(config), AntigravityRunner(config)\\n"
-            "    if store is not None:"
+            "    name = str(name or \\"claude\\").lower()\\n"
+            "    try:\\n"
+            "        from .forge_hook import try_build\\n"
+            "        extra = try_build(config, name)\\n"
+            "        if extra is not None:\\n"
+            "            store, runner = extra\\n"
+            "            titler = getattr(runner, \\"title_for\\", None)\\n"
+            "            if callable(titler):\\n"
+            "                store.titler = titler\\n"
+            "            return store, runner\\n"
+            "    except Exception:\\n"
+            "        pass"
         )
-        if needle not in init_text:
+        if needle in init_text:
+            init_text = init_text.replace(needle, insert, 1)
+            init.write_text(init_text, encoding="utf-8")
+        elif "    if store is not None:" in init_text:
+            fallback = (
+                "    elif name in (\\"cursor\\", \\"agent\\"):\\n"
+                "        from .cursor import CursorRunner, CursorStore\\n"
+                "        store, runner = CursorStore(config), CursorRunner(config)\\n"
+                "    elif name in (\\"antigravity\\", \\"agy\\"):\\n"
+                "        from .antigravity import AntigravityRunner, AntigravityStore\\n"
+                "        store, runner = AntigravityStore(config), AntigravityRunner(config)\\n"
+                "    if store is not None:"
+            )
+            init.write_text(init_text.replace("    if store is not None:", fallback, 1), encoding="utf-8")
+        else:
             fail("could not patch daemon providers")
-        init.write_text(init_text.replace(needle, insert, 1), encoding="utf-8")
+    patched = init.read_text(encoding="utf-8")
+    if "forge_hook" not in patched and "CursorRunner" not in patched:
+        fail("could not patch daemon providers")
     server = daemon / "server.py"
     server_text = server.read_text(encoding="utf-8")
     ping_old = "        if path == \\"/api/ping\\":"

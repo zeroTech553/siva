@@ -7,6 +7,7 @@ const FILES: Record<string, string> = {
   'cli_launch.py': 'cli_launch.py',
   'cursor.py': 'cursor.py',
   'antigravity.py': 'antigravity.py',
+  'forge_hook.py': 'forge_hook.py',
 }
 
 export async function GET(

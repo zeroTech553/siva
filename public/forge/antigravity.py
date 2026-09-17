@@ -4,7 +4,12 @@ import os
 from pathlib import Path
 
 from . import RunnerError
-from ..cli_launch import handle_stream_line, resolve_bin
+from ..cli_launch import (
+    build_headless_cmd,
+    finalize_job,
+    handle_stream_line,
+    resolve_bin,
+)
 
 
 class AntigravityStore:
@@ -80,9 +85,13 @@ class AntigravityRunner:
             raise RunnerError("Antigravity CLI not found. Install it, then run: agy")
         if not job.cwd:
             job.cwd = str(Path.home())
-        cmd = [binary, "-p", job.prompt, "--output-format", "stream-json"]
-        if mode in ("bypassPermissions", "acceptEdits", ""):
-            cmd.append("--dangerously-skip-permissions")
+        cmd = build_headless_cmd(
+            binary,
+            job.prompt,
+            session_id=getattr(job, "session_id", "") or "",
+            permission_mode=mode,
+            flavor="agy",
+        )
         env = dict(os.environ)
         extra = getattr(self.config, "agy_env", None) or {}
         env.update({str(k): str(v) for k, v in extra.items()})
@@ -95,7 +104,7 @@ class AntigravityRunner:
         return None
 
     def finalize(self, job, returncode, stderr_tail):
-        return None
+        return finalize_job(job, returncode, stderr_tail)
 
     def cleanup(self, job):
         return None
