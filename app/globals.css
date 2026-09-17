@@ -1365,10 +1365,10 @@
   }
 
   .desk-machines {
-    width: 42%;
-    height: min(30svh, 180px);
+    width: 92%;
+    height: min(37svh, 220px);
     margin-top: 88px;
-    margin-right: 9%;
+    margin-right: auto;
     margin-left: auto;
   }
 
