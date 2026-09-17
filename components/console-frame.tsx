@@ -3,9 +3,7 @@
 import { useCallback, useEffect, useRef, useState, type KeyboardEvent } from 'react'
 import { useRouter } from 'next/navigation'
 import { ConsoleTranscript } from '@/components/console-transcript'
-import { DeskComputer } from '@/components/desk-computer'
 import { LaptopTerminal } from '@/components/laptop-terminal'
-import { Win95Button, Win95Desktop, Win95Menu, Win95Taskbar, Win95Window } from '@/components/win95'
 import { cliOption } from '@/lib/cli-catalog'
 import {
   PERMISSION_MODES,
@@ -62,20 +60,9 @@ export function ConsoleFrame() {
   const [events, setEvents] = useState<JobEvent[]>([])
   const [error, setError] = useState('')
   const [answering, setAnswering] = useState(false)
-  const [deskApp, setDeskApp] = useState<'agent' | 'terminal' | 'settings'>('agent')
-  const [startOpen, setStartOpen] = useState(false)
-  const [clock, setClock] = useState('--:--')
+  const [showSetup, setShowSetup] = useState(false)
   const seqRef = useRef(0)
   const transcriptRef = useRef<HTMLDivElement>(null)
-
-  useEffect(() => {
-    const tick = () => {
-      setClock(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }))
-    }
-    tick()
-    const timer = window.setInterval(tick, 10000)
-    return () => window.clearInterval(timer)
-  }, [])
 
   const deviceId = session?.deviceId || ''
   const phoneSecret = session?.phoneSecret || ''
@@ -215,6 +202,12 @@ export function ConsoleFrame() {
     node.scrollTop = node.scrollHeight
   }, [events, job?.pending_permission, job?.pending_question])
 
+  function updateCwd(next: string) {
+    setCwd(next)
+    setSessionId('')
+    writeConsolePrefs({ cwd: next, provider, sessionId: '' })
+  }
+
   async function sendPrompt() {
     const text = prompt.trim()
     if (!text || sending || !deviceId || !phoneSecret) return
@@ -248,7 +241,7 @@ export function ConsoleFrame() {
         ? [selected, ...candidates.filter((name) => name !== selected)]
         : candidates
       if (!queue.length) {
-        setError('No coding CLI is available on this laptop yet. Re-run pairing so Forge can install Antigravity.')
+        setError('No coding CLI is available on this laptop yet. Re-run pairing and pick a CLI.')
         return
       }
       setCliMessage(cliSetupMessage(nextPing, queue[0]))
@@ -397,9 +390,9 @@ export function ConsoleFrame() {
 
   if (!ready) {
     return (
-      <DeskComputer phosphor>
-        <p className="crt-boot-cursor p-3">Loading Forge desktop...</p>
-      </DeskComputer>
+      <main className="forge-work">
+        <p className="forge-work-loading">Connecting to laptop…</p>
+      </main>
     )
   }
 
@@ -413,178 +406,161 @@ export function ConsoleFrame() {
       ? 'Bridge is connected, but the local agent daemon is not ready yet. Re-run the install command if this stays unavailable.'
       : cliMessage
         ? cliMessage
-        : `Type a prompt. Forge sends it to ${selected.name} on this laptop.`
-  const statusLine = `${online ? 'Online' : 'Offline'} · ${daemonOnline ? 'Daemon ready' : 'Daemon down'} · ${selected.name}`
+        : `Ask ${selected.name}. The box below is a real shell on this laptop.`
 
   return (
-    <DeskComputer caption={hostname}>
-      <Win95Desktop>
-        {deskApp === 'agent' ? (
-          <Win95Window title={`${selected.name} — Agent`} status={statusLine}>
-            <div className="flex h-full min-h-0 flex-col">
-              <div ref={transcriptRef} className="min-h-0 flex-1 overflow-y-auto bg-input">
-                <ConsoleTranscript events={events} emptyHint={emptyHint} />
-                {job?.pending_permission ? (
-                  <section className="m-2 bg-card p-2">
-                    <p className="text-xs">
-                      Allow {job.pending_permission.tool_name || 'this tool'}
-                      {job.pending_permission.detail ? ` — ${job.pending_permission.detail}` : ''}?
-                    </p>
-                    <div className="mt-2 flex gap-2">
-                      <Win95Button onClick={() => void answerPermission(true)}>Allow</Win95Button>
-                      <Win95Button onClick={() => void answerPermission(false)}>Deny</Win95Button>
-                    </div>
-                  </section>
-                ) : null}
-                {job?.pending_question?.questions?.length ? (
-                  <section className="m-2 bg-card p-2">
-                    {job.pending_question.questions.map((question, index) => (
-                      <div key={`${job.pending_question?.request_id}-${index}`} className="flex flex-col gap-2">
-                        <p className="text-xs">{questionLabel(question)}</p>
-                        <div className="flex flex-wrap gap-2">
-                          {(question.options || []).map((option) => {
-                            const label = optionLabel(option)
-                            return (
-                              <Win95Button key={label} onClick={() => void answerQuestion(question, label)}>
-                                {label}
-                              </Win95Button>
-                            )
-                          })}
-                        </div>
-                      </div>
-                    ))}
-                    <Win95Button onClick={() => void cancelQuestion()}>Skip</Win95Button>
-                  </section>
-                ) : null}
-              </div>
-              {error ? <p className="px-2 py-1 text-xs">{error}</p> : null}
-              <form
-                className="flex flex-col gap-2 border-t border-foreground p-2"
-                onSubmit={(event) => {
-                  event.preventDefault()
-                  void sendPrompt()
-                }}
-              >
-                <textarea
-                  value={prompt}
-                  onChange={(event) => setPrompt(event.target.value)}
-                  onKeyDown={onComposerKeyDown}
-                  placeholder={daemonOnline ? `Ask ${selected.name}…` : 'Waiting for the laptop daemon…'}
-                  disabled={!online}
-                  className="min-h-16 w-full resize-none bg-input p-2 font-sans text-sm text-foreground outline-none"
-                  aria-label="Prompt"
-                />
-                <div className="flex flex-wrap gap-2">
-                  {working ? (
-                    <Win95Button onClick={() => void stopJob()}>Stop</Win95Button>
-                  ) : (
-                    <Win95Button type="submit">Send</Win95Button>
-                  )}
-                  <Win95Button onClick={startNewChat}>New chat</Win95Button>
+    <main className="forge-work">
+      <header className="forge-work-bar">
+        <div className="forge-work-ident">
+          <img src={selected.logo} alt="" width={18} height={18} />
+          <div>
+            <p>{hostname}</p>
+            <p>
+              <span className={online ? 'forge-dot-on' : 'forge-dot-off'} />
+              {online ? (daemonOnline ? 'ready' : 'no daemon') : 'offline'} · {selected.name}
+            </p>
+          </div>
+        </div>
+        <button type="button" className="forge-work-link" onClick={() => setShowSetup((open) => !open)}>
+          {showSetup ? 'Hide' : 'Setup'}
+        </button>
+      </header>
+
+      {showSetup ? (
+        <section className="forge-setup">
+          <label>
+            CLI
+            <select
+              value={provider}
+              onChange={(event) => {
+                const next = event.target.value
+                setProvider(next)
+                setCliMessage(cliSetupMessage(ping, next))
+                writeConsolePrefs({ cwd, provider: next, sessionId })
+              }}
+            >
+              {(providers.length ? providers : [selected.id]).map((name) => (
+                <option key={name} value={name}>
+                  {providerLabel(name)}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label>
+            Project
+            <select value={cwd} onChange={(event) => updateCwd(event.target.value)}>
+              {projects.map((project) => (
+                <option key={project.id} value={project.cwd}>
+                  {project.name}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label>
+            Directory
+            <input value={cwd} onChange={(event) => setCwd(event.target.value)} aria-label="Working directory" />
+          </label>
+          <label>
+            Mode
+            <select value={permissionMode} onChange={(event) => setPermissionMode(event.target.value)}>
+              {PERMISSION_MODES.map((mode) => (
+                <option key={mode.id || 'default'} value={mode.id}>
+                  {mode.label}
+                </option>
+              ))}
+            </select>
+          </label>
+          <div className="forge-setup-actions">
+            <button type="button" onClick={startNewChat}>
+              New chat
+            </button>
+            <button type="button" onClick={() => void resetPairing()}>
+              Reset pairing
+            </button>
+          </div>
+        </section>
+      ) : null}
+
+      <div ref={transcriptRef} className="forge-work-log">
+        <ConsoleTranscript events={events} emptyHint={emptyHint} />
+        {job?.pending_permission ? (
+          <section className="forge-ask">
+            <p>
+              Allow {job.pending_permission.tool_name || 'this tool'}
+              {job.pending_permission.detail ? ` — ${job.pending_permission.detail}` : ''}?
+            </p>
+            <div>
+              <button type="button" onClick={() => void answerPermission(true)} disabled={answering}>
+                Allow
+              </button>
+              <button type="button" onClick={() => void answerPermission(false)} disabled={answering}>
+                Deny
+              </button>
+            </div>
+          </section>
+        ) : null}
+        {job?.pending_question?.questions?.length ? (
+          <section className="forge-ask">
+            {job.pending_question.questions.map((question, index) => (
+              <div key={`${job.pending_question?.request_id}-${index}`}>
+                <p>{questionLabel(question)}</p>
+                <div>
+                  {(question.options || []).map((option) => {
+                    const label = optionLabel(option)
+                    return (
+                      <button key={label} type="button" disabled={answering} onClick={() => void answerQuestion(question, label)}>
+                        {label}
+                      </button>
+                    )
+                  })}
                 </div>
-              </form>
-            </div>
-          </Win95Window>
+              </div>
+            ))}
+            <button type="button" onClick={() => void cancelQuestion()} disabled={answering}>
+              Skip
+            </button>
+          </section>
         ) : null}
-        {deskApp === 'terminal' && deviceId && phoneSecret ? (
-          <Win95Window title="MS-DOS Prompt" status={cwd || hostname}>
-            <LaptopTerminal deviceId={deviceId} phoneSecret={phoneSecret} cwd={cwd} />
-          </Win95Window>
-        ) : null}
-        {deskApp === 'settings' ? (
-          <Win95Window title="Control Panel" status={statusLine}>
-            <div className="flex flex-col gap-3 bg-input p-3 text-xs">
-              <label className="flex flex-col gap-1">
-                Project
-                <select
-                  className="h-8 border border-foreground bg-card px-2"
-                  value={cwd}
-                  onChange={(event) => {
-                    const next = event.target.value
-                    setCwd(next)
-                    setSessionId('')
-                    writeConsolePrefs({ cwd: next, provider, sessionId: '' })
-                  }}
-                >
-                  {projects.map((project) => (
-                    <option key={project.id} value={project.cwd}>
-                      {project.name} {project.cwd ? `- ${project.cwd}` : ''}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label className="flex flex-col gap-1">
-                Working directory
-                <input
-                  value={cwd}
-                  onChange={(event) => setCwd(event.target.value)}
-                  className="h-8 border border-foreground bg-card px-2 font-mono"
-                  aria-label="Working directory"
-                />
-              </label>
-              {providers.length ? (
-                <label className="flex flex-col gap-1">
-                  CLI
-                  <select
-                    className="h-8 border border-foreground bg-card px-2"
-                    value={provider}
-                    onChange={(event) => {
-                      const next = event.target.value
-                      setProvider(next)
-                      setCliMessage(cliSetupMessage(ping, next))
-                      writeConsolePrefs({ cwd, provider: next, sessionId })
-                    }}
-                  >
-                    {providers.map((name) => (
-                      <option key={name} value={name}>
-                        {providerLabel(name)}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-              ) : null}
-              <label className="flex flex-col gap-1">
-                Mode
-                <select
-                  className="h-8 border border-foreground bg-card px-2"
-                  value={permissionMode}
-                  onChange={(event) => setPermissionMode(event.target.value)}
-                >
-                  {PERMISSION_MODES.map((mode) => (
-                    <option key={mode.id || 'default'} value={mode.id}>
-                      {mode.label}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              {cliMessage ? <p>{cliMessage}</p> : null}
-              <Win95Button onClick={() => void resetPairing()}>Reset pairing</Win95Button>
-            </div>
-          </Win95Window>
-        ) : null}
-        {startOpen ? (
-          <Win95Menu
-            items={[
-              { id: 'agent', label: `${selected.name}`, onClick: () => { setDeskApp('agent'); setStartOpen(false) } },
-              { id: 'terminal', label: 'MS-DOS Prompt', onClick: () => { setDeskApp('terminal'); setStartOpen(false) } },
-              { id: 'settings', label: 'Control Panel', onClick: () => { setDeskApp('settings'); setStartOpen(false) } },
-              { id: 'pair', label: 'Pairing', onClick: () => router.push('/') },
-              { id: 'reset', label: 'Reset', onClick: () => void resetPairing() },
-            ]}
-          />
-        ) : null}
-        <Win95Taskbar
-          startOpen={startOpen}
-          onToggleStart={() => setStartOpen((open) => !open)}
-          clock={clock}
-          items={[
-            { id: 'agent', label: 'Agent', active: deskApp === 'agent', onClick: () => setDeskApp('agent') },
-            { id: 'terminal', label: 'Term', active: deskApp === 'terminal', onClick: () => setDeskApp('terminal') },
-            { id: 'settings', label: 'Setup', active: deskApp === 'settings', onClick: () => setDeskApp('settings') },
-          ]}
+      </div>
+
+      {error ? <p className="forge-work-error">{error}</p> : null}
+
+      <form
+        className="forge-prompt"
+        onSubmit={(event) => {
+          event.preventDefault()
+          void sendPrompt()
+        }}
+      >
+        <textarea
+          value={prompt}
+          onChange={(event) => setPrompt(event.target.value)}
+          onKeyDown={onComposerKeyDown}
+          placeholder={daemonOnline ? `Ask ${selected.name}…` : 'Waiting for the laptop daemon…'}
+          disabled={!online}
+          aria-label="Prompt"
         />
-      </Win95Desktop>
-    </DeskComputer>
+        {working ? (
+          <button type="button" onClick={() => void stopJob()} disabled={!jobId}>
+            Stop
+          </button>
+        ) : (
+          <button type="submit" disabled={!online || !daemonOnline || !prompt.trim()}>
+            Send
+          </button>
+        )}
+      </form>
+
+      {deviceId && phoneSecret ? (
+        <LaptopTerminal
+          deviceId={deviceId}
+          phoneSecret={phoneSecret}
+          cwd={cwd}
+          hostname={hostname}
+          onCwdChange={updateCwd}
+        />
+      ) : null}
+    </main>
   )
 }
 
