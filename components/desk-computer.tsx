@@ -1,66 +1,85 @@
 'use client'
 
 import { useRef, useState, type PointerEvent, type ReactNode } from 'react'
-import { playBootJingle, playClick } from '@/lib/desk-sound'
+import { playBoot, playClick } from '@/lib/desk-sound'
 
 type DeskComputerProps = {
   children: ReactNode
   phosphor?: boolean
   caption?: string
-  onMouseClick?: () => void
+  wallpaper?: boolean
 }
 
-export function DeskComputer({ children, phosphor = false, caption, onMouseClick }: DeskComputerProps) {
+export function DeskComputer({ children, phosphor = false, caption, wallpaper = false }: DeskComputerProps) {
   const deskRef = useRef<HTMLElement>(null)
   const screenRef = useRef<HTMLDivElement>(null)
-  const dragRef = useRef<{ pointerId: number; dx: number; dy: number } | null>(null)
-  const [mouse, setMouse] = useState({ x: 78, y: 86 })
-  const [pointer, setPointer] = useState({ x: 72, y: 58 })
+  const dragRef = useRef<{ pointerId: number; lastX: number; lastY: number; moved: number } | null>(null)
+  const pointerRef = useRef({ x: 48, y: 42 })
+  const [mouse, setMouse] = useState({ x: 72, y: 0 })
+  const [pointer, setPointer] = useState({ x: 48, y: 42 })
   const [dragging, setDragging] = useState(false)
+  const [pressed, setPressed] = useState(false)
 
-  function mapPointer(clientX: number, clientY: number) {
+  function setCursor(next: { x: number; y: number }) {
+    pointerRef.current = next
+    setPointer(next)
+  }
+
+  function clickThrough() {
     const screen = screenRef.current
     if (!screen) return
     const box = screen.getBoundingClientRect()
-    setPointer({
-      x: Math.min(96, Math.max(4, ((clientX - box.left) / box.width) * 100)),
-      y: Math.min(96, Math.max(4, ((clientY - box.top) / box.height) * 100)),
-    })
+    const x = box.left + (pointerRef.current.x / 100) * box.width
+    const y = box.top + (pointerRef.current.y / 100) * box.height
+    const hit = document.elementFromPoint(x, y)
+    if (!(hit instanceof HTMLElement)) return
+    if (hit.closest('.desk-mouse')) return
+    hit.click()
   }
 
   function onDeskPointerMove(event: PointerEvent<HTMLElement>) {
-    mapPointer(event.clientX, event.clientY)
     const drag = dragRef.current
     const desk = deskRef.current
     if (!drag || !desk || event.pointerId !== drag.pointerId) return
+    const dx = event.clientX - drag.lastX
+    const dy = event.clientY - drag.lastY
+    drag.lastX = event.clientX
+    drag.lastY = event.clientY
+    drag.moved += Math.abs(dx) + Math.abs(dy)
     const box = desk.getBoundingClientRect()
     setMouse({
-      x: Math.min(92, Math.max(4, ((event.clientX - drag.dx - box.left) / box.width) * 100)),
-      y: Math.min(92, Math.max(8, ((event.clientY - drag.dy - box.top) / box.height) * 100)),
+      x: Math.min(84, Math.max(8, ((event.clientX - 18 - box.left) / box.width) * 100)),
+      y: Math.min(24, Math.max(0, ((box.bottom - event.clientY - 22) / box.height) * 100)),
+    })
+    setCursor({
+      x: Math.min(96, Math.max(3, pointerRef.current.x + (dx / box.width) * 160)),
+      y: Math.min(94, Math.max(3, pointerRef.current.y + (dy / box.height) * 160)),
     })
   }
 
   function onMousePointerDown(event: PointerEvent<HTMLButtonElement>) {
     event.preventDefault()
     event.stopPropagation()
-    void playBootJingle()
-    const node = event.currentTarget
-    const box = node.getBoundingClientRect()
+    void playBoot()
+    setPressed(true)
+    setDragging(true)
     dragRef.current = {
       pointerId: event.pointerId,
-      dx: event.clientX - box.left,
-      dy: event.clientY - box.top,
+      lastX: event.clientX,
+      lastY: event.clientY,
+      moved: 0,
     }
-    setDragging(true)
-    node.setPointerCapture(event.pointerId)
+    event.currentTarget.setPointerCapture(event.pointerId)
   }
 
   function onMousePointerUp(event: PointerEvent<HTMLButtonElement>) {
     if (dragRef.current?.pointerId !== event.pointerId) return
+    const wasClick = (dragRef.current.moved || 0) < 10
     dragRef.current = null
     setDragging(false)
+    setPressed(false)
     void playClick()
-    onMouseClick?.()
+    if (wasClick) clickThrough()
   }
 
   return (
@@ -69,19 +88,18 @@ export function DeskComputer({ children, phosphor = false, caption, onMouseClick
       className="desk-root"
       onPointerMove={onDeskPointerMove}
       onPointerDown={() => {
-        void playBootJingle()
+        void playBoot()
       }}
     >
       <section className="crt-chassis">
         <div className="crt-bezel">
-          <div ref={screenRef} className={phosphor ? 'crt-glass crt-glass-phosphor' : 'crt-glass'}>
+          <div
+            ref={screenRef}
+            className={phosphor ? 'crt-glass crt-glass-phosphor' : wallpaper ? 'crt-glass crt-glass-wallpaper' : 'crt-glass'}
+          >
             <div className="crt-scanlines" aria-hidden="true" />
             <div className="crt-screen-body">{children}</div>
-            <span
-              className="crt-pointer"
-              style={{ left: `${pointer.x}%`, top: `${pointer.y}%` }}
-              aria-hidden="true"
-            />
+            <span className="crt-pointer" style={{ left: `${pointer.x}%`, top: `${pointer.y}%` }} aria-hidden="true" />
           </div>
         </div>
         <div className="crt-badge">
@@ -97,13 +115,13 @@ export function DeskComputer({ children, phosphor = false, caption, onMouseClick
       <button
         type="button"
         className={dragging ? 'desk-mouse desk-mouse-drag' : 'desk-mouse'}
-        style={{ left: `${mouse.x}%`, top: `${mouse.y}%` }}
-        aria-label="Slide the mouse"
+        style={{ left: `${mouse.x}%`, bottom: `${8 + mouse.y}%` }}
+        aria-label="Computer mouse. Drag to move the pointer, tap to click."
         onPointerDown={onMousePointerDown}
         onPointerUp={onMousePointerUp}
         onPointerCancel={onMousePointerUp}
       >
-        <span />
+        <span className={pressed ? 'desk-mouse-btn desk-mouse-btn-down' : 'desk-mouse-btn'} />
       </button>
       {caption ? <p className="desk-caption">{caption}</p> : null}
     </main>

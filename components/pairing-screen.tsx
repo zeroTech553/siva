@@ -6,7 +6,7 @@ import { DeskComputer } from '@/components/desk-computer'
 import { Win95Button, Win95Desktop, Win95Window } from '@/components/win95'
 import { CLI_CATALOG, cliOption } from '@/lib/cli-catalog'
 import { PUBLISHED_APP_ORIGIN, isPrivateHost } from '@/lib/app-origin'
-import { playClick } from '@/lib/desk-sound'
+import { playClick, playDing, playError } from '@/lib/desk-sound'
 import { writeConsolePrefs } from '@/lib/forge-session'
 
 const SESSION_KEY = 'forge.v1'
@@ -87,6 +87,7 @@ export function PairingScreen() {
           if (response.status >= 500) return
           setStatus('error')
           setError(data.error || 'Pairing status is unavailable')
+          void playError()
           return
         }
         if (data.status === 'expired') {
@@ -174,6 +175,7 @@ export function PairingScreen() {
       return
     }
     setCopied(true)
+    void playDing()
     window.setTimeout(() => setCopied(false), 1600)
   }
 
@@ -190,10 +192,8 @@ export function PairingScreen() {
   return (
     <DeskComputer
       phosphor={introStep === 0}
-      caption={introStep === 0 ? 'Slide the mouse, then click to boot' : 'Forge desk'}
-      onMouseClick={() => {
-        if (introStep === 0) setIntroStep(1)
-      }}
+      wallpaper={introStep > 0}
+      caption="Drag the mouse, tap it to click"
     >
       {introStep === 0 ? (
         <button type="button" className="crt-boot" onClick={() => setIntroStep(1)}>
@@ -205,7 +205,7 @@ export function PairingScreen() {
       ) : (
         <Win95Desktop>
           {introStep === 1 ? (
-            <Win95Window title="Program Manager" status="Pick the CLI this laptop should run">
+            <Win95Window fit title="Program Manager" status="Pick the CLI this laptop should run">
               <div className="cli-icon-grid">
                 {CLI_CATALOG.map((cli) => (
                   <button
@@ -230,6 +230,7 @@ export function PairingScreen() {
             </Win95Window>
           ) : (
             <Win95Window
+              fit
               title={`Forge Setup — ${chosenCli.name}`}
               status={`${statusLabel}${session?.hostname ? ` · ${session.hostname}` : ''}`}
             >

@@ -2,9 +2,13 @@
 
 import { useCallback, useEffect, useRef, useState, type KeyboardEvent } from 'react'
 import { useRouter } from 'next/navigation'
+import { CdPlayer } from '@/components/cd-player'
 import { ConsoleTranscript } from '@/components/console-transcript'
+import { DeskComputer } from '@/components/desk-computer'
 import { LaptopTerminal } from '@/components/laptop-terminal'
+import { Win95Button, Win95Desktop, Win95Icons, Win95Menu, Win95Taskbar, Win95Window } from '@/components/win95'
 import { cliOption } from '@/lib/cli-catalog'
+import { playDing, playError, playRecycle } from '@/lib/desk-sound'
 import {
   PERMISSION_MODES,
   cliSetupMessage,
@@ -60,9 +64,19 @@ export function ConsoleFrame() {
   const [events, setEvents] = useState<JobEvent[]>([])
   const [error, setError] = useState('')
   const [answering, setAnswering] = useState(false)
-  const [showSetup, setShowSetup] = useState(false)
+  const [deskApp, setDeskApp] = useState<'desktop' | 'agent' | 'terminal' | 'player' | 'setup' | 'computer'>('desktop')
+  const [startOpen, setStartOpen] = useState(false)
+  const [clock, setClock] = useState('--:--')
+  const [recycleNote, setRecycleNote] = useState('')
   const seqRef = useRef(0)
   const transcriptRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    const tick = () => setClock(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }))
+    tick()
+    const timer = window.setInterval(tick, 10000)
+    return () => window.clearInterval(timer)
+  }, [])
 
   const deviceId = session?.deviceId || ''
   const phoneSecret = session?.phoneSecret || ''
@@ -288,6 +302,7 @@ export function ConsoleFrame() {
         }
       }
       setError(lastError || 'No installed CLI could start this prompt.')
+      void playError()
     } finally {
       setSending(false)
     }
@@ -390,9 +405,9 @@ export function ConsoleFrame() {
 
   if (!ready) {
     return (
-      <main className="forge-work">
-        <p className="forge-work-loading">Connecting to laptop…</p>
-      </main>
+      <DeskComputer phosphor caption="Booting Forge OS">
+        <p className="crt-boot-cursor p-3">Loading desktop...</p>
+      </DeskComputer>
     )
   }
 
@@ -406,161 +421,202 @@ export function ConsoleFrame() {
       ? 'Bridge is connected, but the local agent daemon is not ready yet. Re-run the install command if this stays unavailable.'
       : cliMessage
         ? cliMessage
-        : `Ask ${selected.name}. The box below is a real shell on this laptop.`
+        : `Ask ${selected.name}. Terminal is a real shell on this laptop.`
+  const statusLine = `${online ? 'Online' : 'Offline'} · ${daemonOnline ? 'ready' : 'no daemon'} · ${selected.name}`
+
+  function openApp(next: typeof deskApp) {
+    setDeskApp(next)
+    setStartOpen(false)
+  }
 
   return (
-    <main className="forge-work">
-      <header className="forge-work-bar">
-        <div className="forge-work-ident">
-          <img src={selected.logo} alt="" width={18} height={18} />
-          <div>
-            <p>{hostname}</p>
-            <p>
-              <span className={online ? 'forge-dot-on' : 'forge-dot-off'} />
-              {online ? (daemonOnline ? 'ready' : 'no daemon') : 'offline'} · {selected.name}
-            </p>
-          </div>
-        </div>
-        <button type="button" className="forge-work-link" onClick={() => setShowSetup((open) => !open)}>
-          {showSetup ? 'Hide' : 'Setup'}
-        </button>
-      </header>
-
-      {showSetup ? (
-        <section className="forge-setup">
-          <label>
-            CLI
-            <select
-              value={provider}
-              onChange={(event) => {
-                const next = event.target.value
-                setProvider(next)
-                setCliMessage(cliSetupMessage(ping, next))
-                writeConsolePrefs({ cwd, provider: next, sessionId })
-              }}
-            >
-              {(providers.length ? providers : [selected.id]).map((name) => (
-                <option key={name} value={name}>
-                  {providerLabel(name)}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label>
-            Project
-            <select value={cwd} onChange={(event) => updateCwd(event.target.value)}>
-              {projects.map((project) => (
-                <option key={project.id} value={project.cwd}>
-                  {project.name}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label>
-            Directory
-            <input value={cwd} onChange={(event) => setCwd(event.target.value)} aria-label="Working directory" />
-          </label>
-          <label>
-            Mode
-            <select value={permissionMode} onChange={(event) => setPermissionMode(event.target.value)}>
-              {PERMISSION_MODES.map((mode) => (
-                <option key={mode.id || 'default'} value={mode.id}>
-                  {mode.label}
-                </option>
-              ))}
-            </select>
-          </label>
-          <div className="forge-setup-actions">
-            <button type="button" onClick={startNewChat}>
-              New chat
-            </button>
-            <button type="button" onClick={() => void resetPairing()}>
-              Reset pairing
-            </button>
-          </div>
-        </section>
-      ) : null}
-
-      <div ref={transcriptRef} className="forge-work-log">
-        <ConsoleTranscript events={events} emptyHint={emptyHint} />
-        {job?.pending_permission ? (
-          <section className="forge-ask">
-            <p>
-              Allow {job.pending_permission.tool_name || 'this tool'}
-              {job.pending_permission.detail ? ` — ${job.pending_permission.detail}` : ''}?
-            </p>
-            <div>
-              <button type="button" onClick={() => void answerPermission(true)} disabled={answering}>
-                Allow
-              </button>
-              <button type="button" onClick={() => void answerPermission(false)} disabled={answering}>
-                Deny
-              </button>
-            </div>
-          </section>
+    <DeskComputer wallpaper caption="Drag the mouse, tap it to click">
+      <Win95Desktop>
+        {deskApp === 'desktop' ? (
+          <Win95Icons
+            items={[
+              { id: 'agent', label: selected.name, icon: selected.logo, onClick: () => openApp('agent') },
+              { id: 'terminal', label: 'MS-DOS', onClick: () => openApp('terminal') },
+              { id: 'player', label: 'CD Player', onClick: () => openApp('player') },
+              { id: 'computer', label: 'My Computer', onClick: () => openApp('computer') },
+              {
+                id: 'recycle',
+                label: 'Recycle Bin',
+                onClick: () => {
+                  void playRecycle()
+                  setRecycleNote('Recycle Bin is empty.')
+                  void playDing()
+                },
+              },
+              { id: 'setup', label: 'Control Panel', onClick: () => openApp('setup') },
+            ]}
+          />
         ) : null}
-        {job?.pending_question?.questions?.length ? (
-          <section className="forge-ask">
-            {job.pending_question.questions.map((question, index) => (
-              <div key={`${job.pending_question?.request_id}-${index}`}>
-                <p>{questionLabel(question)}</p>
-                <div>
-                  {(question.options || []).map((option) => {
-                    const label = optionLabel(option)
-                    return (
-                      <button key={label} type="button" disabled={answering} onClick={() => void answerQuestion(question, label)}>
-                        {label}
-                      </button>
-                    )
-                  })}
-                </div>
+        {deskApp === 'agent' ? (
+          <Win95Window title={`${selected.name} — Agent`} status={statusLine} onClose={() => openApp('desktop')}>
+            <div className="flex h-full min-h-0 flex-col">
+              <div ref={transcriptRef} className="forge-work-log">
+                <ConsoleTranscript events={events} emptyHint={emptyHint} />
+                {job?.pending_permission ? (
+                  <section className="forge-ask">
+                    <p>
+                      Allow {job.pending_permission.tool_name || 'this tool'}
+                      {job.pending_permission.detail ? ` — ${job.pending_permission.detail}` : ''}?
+                    </p>
+                    <div>
+                      <Win95Button onClick={() => void answerPermission(true)}>Allow</Win95Button>
+                      <Win95Button onClick={() => void answerPermission(false)}>Deny</Win95Button>
+                    </div>
+                  </section>
+                ) : null}
+                {job?.pending_question?.questions?.length ? (
+                  <section className="forge-ask">
+                    {job.pending_question.questions.map((question, index) => (
+                      <div key={`${job.pending_question?.request_id}-${index}`}>
+                        <p>{questionLabel(question)}</p>
+                        <div>
+                          {(question.options || []).map((option) => {
+                            const label = optionLabel(option)
+                            return (
+                              <Win95Button key={label} onClick={() => void answerQuestion(question, label)}>
+                                {label}
+                              </Win95Button>
+                            )
+                          })}
+                        </div>
+                      </div>
+                    ))}
+                    <Win95Button onClick={() => void cancelQuestion()}>Skip</Win95Button>
+                  </section>
+                ) : null}
               </div>
-            ))}
-            <button type="button" onClick={() => void cancelQuestion()} disabled={answering}>
-              Skip
-            </button>
-          </section>
+              {error ? <p className="forge-work-error">{error}</p> : null}
+              <form
+                className="forge-prompt"
+                onSubmit={(event) => {
+                  event.preventDefault()
+                  void sendPrompt()
+                }}
+              >
+                <textarea
+                  value={prompt}
+                  onChange={(event) => setPrompt(event.target.value)}
+                  onKeyDown={onComposerKeyDown}
+                  placeholder={daemonOnline ? `Ask ${selected.name}…` : 'Waiting for the laptop daemon…'}
+                  disabled={!online}
+                  aria-label="Prompt"
+                />
+                {working ? (
+                  <Win95Button onClick={() => void stopJob()}>Stop</Win95Button>
+                ) : (
+                  <Win95Button type="submit">Send</Win95Button>
+                )}
+              </form>
+            </div>
+          </Win95Window>
         ) : null}
-      </div>
-
-      {error ? <p className="forge-work-error">{error}</p> : null}
-
-      <form
-        className="forge-prompt"
-        onSubmit={(event) => {
-          event.preventDefault()
-          void sendPrompt()
-        }}
-      >
-        <textarea
-          value={prompt}
-          onChange={(event) => setPrompt(event.target.value)}
-          onKeyDown={onComposerKeyDown}
-          placeholder={daemonOnline ? `Ask ${selected.name}…` : 'Waiting for the laptop daemon…'}
-          disabled={!online}
-          aria-label="Prompt"
+        {deskApp === 'terminal' && deviceId && phoneSecret ? (
+          <Win95Window title="MS-DOS Prompt" status={cwd || hostname} onClose={() => openApp('desktop')}>
+            <LaptopTerminal
+              deviceId={deviceId}
+              phoneSecret={phoneSecret}
+              cwd={cwd}
+              hostname={hostname}
+              onCwdChange={updateCwd}
+            />
+          </Win95Window>
+        ) : null}
+        {deskApp === 'player' ? (
+          <Win95Window title="CD Player" status="MIDI" onClose={() => openApp('desktop')}>
+            <CdPlayer />
+          </Win95Window>
+        ) : null}
+        {deskApp === 'computer' ? (
+          <Win95Window title="My Computer" status={hostname} onClose={() => openApp('desktop')}>
+            <div className="os-pane">
+              <p>{hostname}</p>
+              <p>{statusLine}</p>
+              <p>{cwd || 'Waiting for laptop home directory.'}</p>
+              {recycleNote ? <p>{recycleNote}</p> : null}
+            </div>
+          </Win95Window>
+        ) : null}
+        {deskApp === 'setup' ? (
+          <Win95Window title="Control Panel" status={statusLine} onClose={() => openApp('desktop')}>
+            <div className="os-pane">
+              <label>
+                CLI
+                <select
+                  value={provider}
+                  onChange={(event) => {
+                    const next = event.target.value
+                    setProvider(next)
+                    setCliMessage(cliSetupMessage(ping, next))
+                    writeConsolePrefs({ cwd, provider: next, sessionId })
+                  }}
+                >
+                  {(providers.length ? providers : [selected.id]).map((name) => (
+                    <option key={name} value={name}>
+                      {providerLabel(name)}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                Project
+                <select value={cwd} onChange={(event) => updateCwd(event.target.value)}>
+                  {projects.map((project) => (
+                    <option key={project.id} value={project.cwd}>
+                      {project.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                Directory
+                <input value={cwd} onChange={(event) => setCwd(event.target.value)} aria-label="Working directory" />
+              </label>
+              <label>
+                Mode
+                <select value={permissionMode} onChange={(event) => setPermissionMode(event.target.value)}>
+                  {PERMISSION_MODES.map((mode) => (
+                    <option key={mode.id || 'default'} value={mode.id}>
+                      {mode.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              {cliMessage ? <p>{cliMessage}</p> : null}
+              <div className="os-actions">
+                <Win95Button onClick={startNewChat}>New chat</Win95Button>
+                <Win95Button onClick={() => void resetPairing()}>Reset pairing</Win95Button>
+              </div>
+            </div>
+          </Win95Window>
+        ) : null}
+        {startOpen ? (
+          <Win95Menu
+            items={[
+              { id: 'agent', label: selected.name, onClick: () => openApp('agent') },
+              { id: 'terminal', label: 'MS-DOS Prompt', onClick: () => openApp('terminal') },
+              { id: 'player', label: 'CD Player', onClick: () => openApp('player') },
+              { id: 'setup', label: 'Control Panel', onClick: () => openApp('setup') },
+              { id: 'desktop', label: 'Desktop', onClick: () => openApp('desktop') },
+            ]}
+          />
+        ) : null}
+        <Win95Taskbar
+          startOpen={startOpen}
+          onToggleStart={() => setStartOpen((open) => !open)}
+          clock={clock}
+          items={[
+            { id: 'agent', label: 'Agent', active: deskApp === 'agent', onClick: () => openApp('agent') },
+            { id: 'terminal', label: 'DOS', active: deskApp === 'terminal', onClick: () => openApp('terminal') },
+            { id: 'player', label: 'CD', active: deskApp === 'player', onClick: () => openApp('player') },
+          ]}
         />
-        {working ? (
-          <button type="button" onClick={() => void stopJob()} disabled={!jobId}>
-            Stop
-          </button>
-        ) : (
-          <button type="submit" disabled={!online || !daemonOnline || !prompt.trim()}>
-            Send
-          </button>
-        )}
-      </form>
-
-      {deviceId && phoneSecret ? (
-        <LaptopTerminal
-          deviceId={deviceId}
-          phoneSecret={phoneSecret}
-          cwd={cwd}
-          hostname={hostname}
-          onCwdChange={updateCwd}
-        />
-      ) : null}
-    </main>
+      </Win95Desktop>
+    </DeskComputer>
   )
 }
 

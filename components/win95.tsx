@@ -7,19 +7,46 @@ export function Win95Desktop({ children }: { children: ReactNode }) {
   return <div className="win95-desktop">{children}</div>
 }
 
+export function Win95Icons({
+  items,
+}: {
+  items: Array<{ id: string; label: string; icon?: string; onClick: () => void }>
+}) {
+  return (
+    <div className="win95-icons">
+      {items.map((item) => (
+        <button
+          key={item.id}
+          type="button"
+          className="win95-icon"
+          onClick={() => {
+            void playClick()
+            item.onClick()
+          }}
+        >
+          {item.icon ? <img src={item.icon} alt="" width={28} height={28} /> : <span className={`win95-glyph win95-glyph-${item.id}`} />}
+          <span>{item.label}</span>
+        </button>
+      ))}
+    </div>
+  )
+}
+
 export function Win95Window({
   title,
   children,
   status,
   onClose,
+  fit,
 }: {
   title: string
   children: ReactNode
   status?: string
   onClose?: () => void
+  fit?: boolean
 }) {
   return (
-    <section className="win95-window">
+    <section className={fit ? 'win95-window win95-window-fit' : 'win95-window'}>
       <header className="win95-title">
         <span className="min-w-0 truncate">{title}</span>
         {onClose ? (
