@@ -350,8 +350,15 @@ class Bridge:
 
     def send_binary(self, data: bytes) -> None:
         with self.send_lock:
-            if self.socket and self.socket.sock and self.socket.sock.connected:
-                self.socket.send_binary(data)
+            if not (self.socket and self.socket.sock and self.socket.sock.connected):
+                return
+            # websocket-client: send_bytes() on modern versions, otherwise
+            # send() with the binary opcode.
+            sender = getattr(self.socket, "send_bytes", None)
+            if callable(sender):
+                sender(data)
+            else:
+                self.socket.send(data, opcode=websocket.ABNF.OPCODE_BINARY)
 
     def on_open(self, ws) -> None:
         self.socket = ws
@@ -843,26 +850,29 @@ class Bridge:
         )
         if action == "roots":
             return 200, self.files.roots_info()
+        # Optional numbers are passed through untouched: FileService clamps
+        # real values and falls back on missing ones. (Coercing absent fields
+        # to 0 here once turned every default listing into a single entry.)
         if action == "list":
-            return 200, self.files.list(payload.get("path", ""), int(payload.get("limit") or 0))
+            return 200, self.files.list(payload.get("path", ""), payload.get("limit"))
         if action == "stat":
             return 200, self.files.stat(payload.get("path", ""))
         if action == "read":
             return 200, self.files.read(
                 payload.get("path", ""),
-                int(payload.get("offset") or 0),
-                int(payload.get("limit") or 0),
-                int(payload.get("bytes") or 0),
+                payload.get("offset") or 0,
+                payload.get("limit"),
+                payload.get("bytes"),
             )
         if action == "glob":
             return 200, self.files.glob(
-                payload.get("path", ""), payload.get("pattern", ""), int(payload.get("limit") or 0)
+                payload.get("path", ""), payload.get("pattern", ""), payload.get("limit")
             )
         if action == "grep":
             return 200, self.files.grep(
                 payload.get("path", ""),
                 payload.get("pattern", ""),
-                int(payload.get("limit") or 0),
+                payload.get("limit"),
                 bool(payload.get("ignoreCase")),
             )
         if method != "POST":

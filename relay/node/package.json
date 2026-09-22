@@ -1,0 +1,16 @@
+{
+  "name": "forge-relay-node",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Forge relay for local development and self-hosting. Same protocol as relay/worker (see relay/PROTOCOL.md), in-memory store, one process.",
+  "main": "src/server.mjs",
+  "scripts": {
+    "dev": "node src/server.mjs",
+    "start": "node src/server.mjs",
+    "test": "node --test ../../tests/relay-room.test.mjs ../../tests/e2e-terminal.test.mjs"
+  },
+  "dependencies": {
+    "ws": "^8.18.0"
+  }
+}
