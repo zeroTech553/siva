@@ -19,6 +19,8 @@
 //   HOST                     bind address    (default 0.0.0.0)
 //   WORKER_PROXY_SECRET      shared secret the Next.js proxy must present
 //   FORGE_RELAY_STATE        optional JSON file to persist device records
+//   FORGE_RELAY_PUBLIC_URL   address clients dial for WebSockets, when this
+//                            process sits behind a proxy (e.g. wss://relay.example.com)
 
 import { createServer } from 'node:http';
 import { WebSocketServer } from 'ws';
@@ -109,8 +111,7 @@ export function createRelay({
           send(result.status, { error: result.error });
           return;
         }
-        const wsUrl = new URL(url);
-        wsUrl.protocol = 'ws:';
+        const wsUrl = websocketUrl(req, url);
         wsUrl.pathname = `/v1/devices/${result.deviceId}/connect`;
         wsUrl.search = `token=${encodeURIComponent(result.deviceToken)}`;
         send(201, {
@@ -193,8 +194,7 @@ export function createRelay({
             clientId,
             userId: String(body.userId ?? ''),
           });
-          const wsUrl = new URL(url);
-          wsUrl.protocol = 'ws:';
+          const wsUrl = websocketUrl(req, url);
           wsUrl.pathname = `/v1/devices/${deviceId}/term`;
           wsUrl.search = `ticket=${encodeURIComponent(ticket.ticket)}`;
           send(201, { ...ticket, url: wsUrl.toString() });
@@ -338,6 +338,26 @@ function clientKey(req) {
   return String(
     req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.socket.remoteAddress || 'unknown',
   );
+}
+
+function websocketUrl(req, url) {
+  // The address clients must dial, in order of trust:
+  //   1. FORGE_RELAY_PUBLIC_URL  — explicit, for relays behind proxies whose
+  //      internal address (e.g. 127.0.0.1) means nothing to a browser
+  //   2. x-forwarded-proto/host  — a TLS proxy in front of this process
+  //   3. the request's own host  — direct connections in development
+  const configured = (process.env.FORGE_RELAY_PUBLIC_URL ?? '').trim();
+  if (configured) {
+    const wsUrl = new URL(configured);
+    wsUrl.protocol = wsUrl.protocol === 'https:' || wsUrl.protocol === 'wss:' ? 'wss:' : 'ws:';
+    return wsUrl;
+  }
+  const proto = String(req.headers['x-forwarded-proto'] ?? '').split(',')[0].trim();
+  const host = String(req.headers['x-forwarded-host'] ?? '').split(',')[0].trim();
+  const wsUrl = new URL(url);
+  if (host) wsUrl.host = host;
+  wsUrl.protocol = proto === 'https' || proto === 'wss' ? 'wss:' : 'ws:';
+  return wsUrl;
 }
 
 function publicDevice(device, deviceRoom) {

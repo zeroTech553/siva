@@ -145,69 +145,63 @@
   font-size: 11px;
 }
 
-.laptop-term {
+/* Machine terminal — the real PTY streamed from the paired laptop.
+   xterm.js draws the screen; these rules only frame it. */
+
+.machine-term {
   display: flex;
   min-height: 0;
   flex: 1;
   flex-direction: column;
   background: #071e28;
-  color: var(--card);
 }
 
-.laptop-term-bar {
+.machine-term-bar {
   display: flex;
-  justify-content: space-between;
-  gap: 8px;
+  align-items: center;
+  gap: 6px;
   background: var(--primary);
   color: var(--primary-foreground);
   padding: 4px 6px;
   font-size: 10px;
 }
 
-.laptop-term-cwd {
+.machine-term-title {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  margin-left: auto;
+  opacity: 0.85;
 }
 
-.laptop-term-scroll {
+.machine-term-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #888;
+}
+
+.machine-term-dot--ready {
+  background: #58d858;
+}
+
+.machine-term-dot--connecting,
+.machine-term-dot--reconnecting {
+  background: #e8c34a;
+  animation: pixel-blink 1.2s ease-in-out infinite;
+}
+
+.machine-term-dot--offline,
+.machine-term-dot--closed {
+  background: #d85858;
+}
+
+.machine-term-screen {
   min-height: 0;
   flex: 1;
-  overflow: auto;
-  padding: 6px;
+  padding: 4px;
 }
 
-.laptop-term-scroll pre,
-.laptop-term-busy {
-  margin: 0;
-  font-family: var(--font-mono), ui-monospace, monospace;
-  font-size: 10px;
-  line-height: 1.45;
-  white-space: pre-wrap;
+.machine-term-screen .xterm {
+  height: 100%;
 }
-
-.laptop-term-err {
-  color: var(--accent);
-}
-
-.laptop-term-form {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  border-top: 2px solid var(--border);
-  padding: 6px;
-}
-
-.laptop-term-ps1 {
-  font-family: var(--font-mono), ui-monospace, monospace;
-  font-size: 10px;
-  white-space: nowrap;
-}
-
-.laptop-term-form input {
-  min-width: 0;
-  flex: 1;
-  background: transparent;
-  color: var(--card);
-  outline: none;
-  }

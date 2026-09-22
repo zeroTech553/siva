@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import { CdPlayer } from '@/components/desk/cd-player'
 import { ConsoleTranscript } from '@/components/agent/console-transcript'
 import { DeskComputer } from '@/components/desk/desk-computer'
-import { LaptopTerminal } from '@/components/terminal/laptop-terminal'
+import { MachineTerminal } from '@/components/terminal/machine-terminal'
 import { Win95Button, Win95Desktop, Win95Icons, Win95Menu, Win95Taskbar, Win95Window } from '@/components/os/win95'
 import { cliOption } from '@/lib/shared/cli-catalog'
 import { playDing, playError, playRecycle } from '@/lib/client/desk-sound'
@@ -522,14 +522,8 @@ export function ConsoleFrame() {
           </Win95Window>
         ) : null}
         {deskApp === 'terminal' && deviceId && phoneSecret ? (
-          <Win95Window title="MS-DOS Prompt" status={cwd || hostname} onClose={() => openApp('desktop')}>
-            <LaptopTerminal
-              deviceId={deviceId}
-              phoneSecret={phoneSecret}
-              cwd={cwd}
-              hostname={hostname}
-              onCwdChange={updateCwd}
-            />
+          <Win95Window title="Terminal" status={cwd || hostname} onClose={() => openApp('desktop')}>
+            <MachineTerminal deviceId={deviceId} phoneSecret={phoneSecret} cwd={cwd} hostname={hostname} />
           </Win95Window>
         ) : null}
         {deskApp === 'player' ? (
