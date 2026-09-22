@@ -7,6 +7,7 @@ import { Win95Button, Win95Desktop, Win95Window } from '@/components/os/win95'
 import { CLI_CATALOG, cliOption } from '@/lib/shared/cli-catalog'
 import { PUBLISHED_APP_ORIGIN, isPrivateHost } from '@/lib/server/app-origin'
 import { playClick, playDing, playError } from '@/lib/client/desk-sound'
+import { saveMachineToAccount, useAccount } from '@/lib/client/account'
 import { writeConsolePrefs } from '@/lib/client/forge-session'
 
 const SESSION_KEY = 'forge.v1'
@@ -56,11 +57,22 @@ export function PairingScreen() {
     void createPair()
   }, [])
 
+  const account = useAccount()
+
   useEffect(() => {
-    if (status === 'online' && session?.deviceId) {
-      router.push('/console')
+    if (status !== 'online' || !session?.deviceId) return
+    // Signed-in users keep this machine on their account so it follows them
+    // to any browser. Device-only mode just proceeds to the console.
+    if (account.enabled && account.user) {
+      void saveMachineToAccount({
+        deviceId: session.deviceId,
+        phoneSecret: session.phoneSecret,
+        name: session.hostname,
+        platform,
+      })
     }
-  }, [status, session?.deviceId, router])
+    router.push('/console')
+  }, [status, session, router, account.enabled, account.user, platform])
 
   useEffect(() => {
     if (!session?.code || !session.phoneSecret) return

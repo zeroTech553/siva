@@ -26,6 +26,7 @@ import {
   type Project,
 } from '@/lib/shared/daemon'
 import { DeviceRpcError, deviceRpc } from '@/lib/client/device-rpc'
+import { loadAccountMachines } from '@/lib/client/account'
 import {
   clearForgeSession,
   readConsolePrefs,
@@ -82,18 +83,37 @@ export function ConsoleFrame() {
   const phoneSecret = session?.phoneSecret || ''
 
   useEffect(() => {
+    const apply = (existing: ForgeSession) => {
+      const prefs = readConsolePrefs()
+      setSession(existing)
+      setHostname(existing.hostname || 'Laptop')
+      if (prefs.cwd) setCwd(prefs.cwd)
+      if (prefs.provider) setProvider(prefs.provider)
+      if (prefs.sessionId) setSessionId(prefs.sessionId)
+      setReady(true)
+    }
+
     const existing = readForgeSession()
-    if (!existing?.deviceId || !existing.phoneSecret) {
-      router.replace('/')
+    if (existing?.deviceId && existing.phoneSecret) {
+      apply(existing)
       return
     }
-    const prefs = readConsolePrefs()
-    setSession(existing)
-    setHostname(existing.hostname || 'Laptop')
-    if (prefs.cwd) setCwd(prefs.cwd)
-    if (prefs.provider) setProvider(prefs.provider)
-    if (prefs.sessionId) setSessionId(prefs.sessionId)
-    setReady(true)
+    // New browser, signed-in user: restore the machine from the account.
+    void loadAccountMachines().then((machines) => {
+      const machine = machines[0]
+      if (!machine) {
+        router.replace('/')
+        return
+      }
+      const restored: ForgeSession = {
+        code: '',
+        phoneSecret: machine.phone_secret,
+        deviceId: machine.device_id,
+        hostname: machine.name,
+      }
+      writeForgeSession(restored)
+      apply(restored)
+    })
   }, [router])
 
   const refreshDevice = useCallback(async (active: ForgeSession) => {
