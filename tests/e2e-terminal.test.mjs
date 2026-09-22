@@ -204,6 +204,7 @@ test('full pipe: pair → bridge → ticket → encrypted terminal → files', {
       FORGE_KEYS: join(home, 'keys.json'),
       FORGE_CLIENTS: join(home, 'clients.json'),
       FORGE_AUDIT_LOG: join(home, 'audit.log'),
+      FORGE_LOCK_PORT: '28473', // beside, not instead of, any real bridge
       HOME: home,
       SHELL: '/bin/sh',
     },

@@ -82,7 +82,9 @@ CONNECT_TIMEOUT_S = 3
 READ_TIMEOUT_S = 300
 HEARTBEAT_S = 15
 CHANNEL_TIMEOUT_S = 20
-LOCK_PORT = 18473
+# Single-instance lock. One bridge per machine in real life; tests override
+# FORGE_LOCK_PORT so a test bridge can run beside a developer's own.
+LOCK_PORT = int(os.environ.get("FORGE_LOCK_PORT") or 18473)
 FS_PREFIX = "/api/fs/"
 BRIDGE_PREFIX = "/api/bridge/"
 
