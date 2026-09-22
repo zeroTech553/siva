@@ -1,24 +1,55 @@
 import type { Metadata, Viewport } from 'next'
-import { Archivo, IBM_Plex_Mono } from 'next/font/google'
+import localFont from 'next/font/local'
 import { Analytics } from '@vercel/analytics/next'
 import './globals.css'
 
-const archivo = Archivo({
-  subsets: ['latin'],
-  variable: '--font-archivo',
+/**
+ * Fonts are self-hosted from `assets/fonts` (SIL Open Font License, see the
+ * LICENSE-*.txt files next to them) on purpose:
+ *
+ *   1. `next/font/google` downloads at build time, so a build fails whenever
+ *      fonts.googleapis.com is unreachable (CI egress rules, air-gapped builds).
+ *   2. Self-hosting removes a third-party request from every page view.
+ *
+ * Three faces, one job each — keep it that way:
+ *   --font-os    Silkscreen      bitmap face for the retro OS chrome (titles, buttons, taskbar)
+ *   --font-mono  IBM Plex Mono   terminal, paths, prompts, code
+ *   --font-sans  Archivo         long-form copy and marketing text
+ */
+const osFont = localFont({
+  src: [
+    { path: '../assets/fonts/silkscreen-latin-400.woff2', weight: '400', style: 'normal' },
+    { path: '../assets/fonts/silkscreen-latin-700.woff2', weight: '700', style: 'normal' },
+  ],
+  variable: '--font-silkscreen',
+  display: 'swap',
+  fallback: ['ui-monospace', 'monospace'],
 })
 
-const ibmPlexMono = IBM_Plex_Mono({
-  subsets: ['latin'],
-  weight: ['400', '700'],
+const monoFont = localFont({
+  src: [
+    { path: '../assets/fonts/ibm-plex-mono-latin-400.woff2', weight: '400', style: 'normal' },
+    { path: '../assets/fonts/ibm-plex-mono-latin-700.woff2', weight: '700', style: 'normal' },
+  ],
   variable: '--font-ibm',
+  display: 'swap',
+  fallback: ['ui-monospace', 'SFMono-Regular', 'Menlo', 'monospace'],
+})
+
+const sansFont = localFont({
+  src: [
+    { path: '../assets/fonts/archivo-latin-variable.woff2', weight: '100 900', style: 'normal' },
+    { path: '../assets/fonts/archivo-latin-variable-italic.woff2', weight: '100 900', style: 'italic' },
+  ],
+  variable: '--font-archivo',
+  display: 'swap',
+  fallback: ['Arial', 'sans-serif'],
 })
 
 export const metadata: Metadata = {
   title: 'Forge',
   description:
     'Visit the site, run one command on your laptop, control Claude Code from your phone. No signup.',
-  generator: 'v0.app',
   applicationName: 'Forge',
 }
 
@@ -36,7 +67,10 @@ export default function RootLayout({
   children: React.ReactNode
 }>) {
   return (
-    <html lang="en" className={`${archivo.variable} ${ibmPlexMono.variable} light bg-background`}>
+    <html
+      lang="en"
+      className={`${sansFont.variable} ${monoFont.variable} ${osFont.variable} light bg-background`}
+    >
       <body className="min-h-svh bg-background font-sans antialiased">
         {children}
         {process.env.NODE_ENV === 'production' && <Analytics />}

@@ -1,0 +1,213 @@
+/* styles/apps.css — the apps that run inside an OS window: pairing, agent console,
+   terminal, CD player, control panel. Owned by components/{pairing,agent,terminal,console}/*. */
+
+
+
+.cli-icon-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+  padding: 8px;
+}
+
+.cli-icon {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  border: 2px solid transparent;
+  padding: 6px 4px;
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.cli-icon-selected {
+  border-color: var(--primary);
+  background: var(--card);
+  box-shadow: 2px 2px 0 var(--border);
+}
+
+.cli-icon img {
+  width: 24px;
+  height: 24px;
+  object-fit: contain;
+}
+
+.pair-pane {
+  display: flex;
+  min-height: 0;
+  flex: 1;
+  flex-direction: column;
+  gap: 6px;
+  overflow: auto;
+  padding: 8px;
+}
+
+.pair-kicker {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.pair-code {
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 18px;
+  letter-spacing: 0.1em;
+}
+
+.pair-command {
+  max-height: 72px;
+  overflow: auto;
+  border: 2px solid var(--border);
+  background: #071e28;
+  color: var(--card);
+  padding: 6px;
+  font-size: 9px;
+  line-height: 1.4;
+  white-space: pre-wrap;
+}
+
+.pair-actions,
+.cd-actions,
+.os-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.cd-player,
+.os-pane {
+  display: flex;
+  min-height: 0;
+  flex: 1;
+  flex-direction: column;
+  gap: 8px;
+  overflow: auto;
+  padding: 8px;
+  font-size: 11px;
+}
+
+.cd-disc {
+  border: 2px solid var(--border);
+  background: #071e28;
+  color: var(--card);
+  padding: 8px;
+  font-family: var(--font-mono), ui-monospace, monospace;
+}
+
+.cd-player select,
+.os-pane select,
+.os-pane input,
+.forge-prompt textarea {
+  width: 100%;
+  border: 2px solid var(--border);
+  background: var(--card);
+  padding: 6px;
+  color: var(--foreground);
+}
+
+.forge-work-log {
+  min-height: 0;
+  flex: 1;
+  overflow: auto;
+  background: var(--card);
+}
+
+.forge-prompt {
+  display: flex;
+  gap: 6px;
+  border-top: 2px solid var(--border);
+  padding: 6px;
+}
+
+.forge-prompt textarea {
+  min-height: 48px;
+  resize: none;
+}
+
+.forge-ask {
+  margin: 6px;
+  border: 2px solid var(--border);
+  background: var(--card);
+  padding: 8px;
+  box-shadow: 2px 2px 0 var(--border);
+}
+
+.forge-ask div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.forge-work-error {
+  padding: 4px 8px;
+  font-size: 11px;
+}
+
+.laptop-term {
+  display: flex;
+  min-height: 0;
+  flex: 1;
+  flex-direction: column;
+  background: #071e28;
+  color: var(--card);
+}
+
+.laptop-term-bar {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  background: var(--primary);
+  color: var(--primary-foreground);
+  padding: 4px 6px;
+  font-size: 10px;
+}
+
+.laptop-term-cwd {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.laptop-term-scroll {
+  min-height: 0;
+  flex: 1;
+  overflow: auto;
+  padding: 6px;
+}
+
+.laptop-term-scroll pre,
+.laptop-term-busy {
+  margin: 0;
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 10px;
+  line-height: 1.45;
+  white-space: pre-wrap;
+}
+
+.laptop-term-err {
+  color: var(--accent);
+}
+
+.laptop-term-form {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  border-top: 2px solid var(--border);
+  padding: 6px;
+}
+
+.laptop-term-ps1 {
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 10px;
+  white-space: nowrap;
+}
+
+.laptop-term-form input {
+  min-width: 0;
+  flex: 1;
+  background: transparent;
+  color: var(--card);
+  outline: none;
+  }

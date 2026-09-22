@@ -1,5 +1,5 @@
-import { relayFetch, relayPhoneHeaders } from '@/lib/relay'
-import { json } from '@/lib/http'
+import { relayFetch, relayPhoneHeaders } from '@/lib/server/relay'
+import { json } from '@/lib/server/http'
 
 export const maxDuration = 300
 

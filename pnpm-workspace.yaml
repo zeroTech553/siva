@@ -1,6 +1,7 @@
 packages:
   - '.'
-  - 'worker'
+  - 'relay/worker'
+  - 'relay/node'
 
 pmOnFail: ignore
 

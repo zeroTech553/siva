@@ -1,0 +1,221 @@
+/* styles/os.css — the retro OS chrome: desktop, windows, title bars, taskbar, start menu,
+   buttons, icons. Owned by components/os/*. */
+
+
+
+.win95-desktop {
+  position: relative;
+  display: flex;
+  min-height: 0;
+  flex: 1;
+  flex-direction: column;
+  color: var(--foreground);
+}
+
+.win95-icons {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  padding: 8px;
+}
+
+.win95-icon {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  color: var(--card);
+  font-size: 10px;
+  font-weight: 700;
+  text-shadow: 1px 1px 0 var(--border);
+}
+
+.win95-icon img {
+  width: 24px;
+  height: 24px;
+  object-fit: contain;
+  border: 2px solid var(--border);
+  background: var(--card);
+  padding: 2px;
+}
+
+.win95-glyph {
+  width: 24px;
+  height: 24px;
+  border: 2px solid var(--border);
+  background: var(--card);
+}
+
+.win95-glyph-computer,
+.win95-glyph-agent {
+  background: var(--primary);
+}
+
+.win95-glyph-recycle {
+  background: #071e28;
+}
+
+.win95-glyph-player {
+  background: var(--accent);
+}
+
+.win95-glyph-terminal {
+  background: #071e28;
+}
+
+.win95-window {
+  display: flex;
+  min-height: 0;
+  flex: 1;
+  flex-direction: column;
+  margin: 6px 6px 0;
+  border: 3px solid var(--border);
+  background: var(--card);
+  box-shadow: 4px 4px 0 var(--border);
+}
+
+.win95-window-fit {
+  flex: 0 1 auto;
+  max-height: calc(100% - 10px);
+}
+
+.win95-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  background: var(--primary);
+  color: var(--primary-foreground);
+  padding: 3px 4px;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.win95-x,
+.win95-btn,
+.win95-start,
+.win95-task {
+  border: 2px solid var(--border);
+  background: var(--card);
+  color: var(--foreground);
+  padding: 2px 8px;
+  font-size: 11px;
+  font-weight: 700;
+  box-shadow: 2px 2px 0 var(--border);
+}
+
+.win95-x {
+  padding: 0 6px;
+}
+
+.win95-x:active,
+.win95-btn:active,
+.win95-start:active,
+.win95-task:active,
+.win95-start-open,
+.win95-task-active {
+  box-shadow: none;
+  translate: 2px 2px;
+}
+
+.win95-body {
+  display: flex;
+  min-height: 0;
+  flex: 1;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.win95-status {
+  border-top: 2px solid var(--border);
+  padding: 2px 6px;
+  font-size: 9px;
+}
+
+.win95-taskbar {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: auto;
+  border-top: 3px solid var(--border);
+  background: var(--card);
+  padding: 3px;
+}
+
+.win95-tasks {
+  display: flex;
+  min-width: 0;
+  flex: 1;
+  gap: 3px;
+  overflow: hidden;
+}
+
+.win95-task {
+  min-width: 0;
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.win95-tray {
+  border: 2px solid var(--border);
+  padding: 2px 6px;
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.win95-menu {
+  position: absolute;
+  bottom: 28px;
+  left: 3px;
+  z-index: 5;
+  display: flex;
+  width: 148px;
+  flex-direction: column;
+  border: 3px solid var(--border);
+  background: var(--card);
+  box-shadow: 4px 4px 0 var(--border);
+}
+
+.win95-menu button {
+  padding: 8px 10px;
+  text-align: left;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.win95-note {
+  padding: 6px 8px 0;
+  font-size: 10px;
+  line-height: 1.4;
+}
+
+.win95-title,
+.win95-title > * {
+  min-width: 0;
+  white-space: nowrap;
+}
+
+.win95-title > span:first-child {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.win95-window {
+  margin: 4px;
+}
+
+@media (max-width: 480px) {
+  .win95-taskbar {
+    gap: 2px;
+    padding: 2px;
+  }
+
+  .win95-start,
+  .win95-task,
+  .win95-tray {
+    padding: 2px 4px;
+    font-size: 9px;
+  }
+}
