@@ -30,16 +30,21 @@ export default {
       if (url.pathname.match(/^\/v1\/devices\/[^/]+\/connect$/)) {
         return await connectLaptop(request, env, url)
       }
+      if (url.pathname.match(/^\/v1\/devices\/[^/]+\/term$/)) {
+        return await connectBrowser(request, env, url)
+      }
       if (!requireProxy(request, env)) return json({ error: 'Invalid proxy credential' }, 401)
 
       if (url.pathname === '/v1/pairs' && request.method === 'POST') return await createPair(request, env)
       if (url.pathname === '/v1/pairs/claim' && request.method === 'POST') return await claimPair(request, env)
       if (url.pathname === '/v1/pairs/status' && request.method === 'GET') return await pairStatus(request, env, url)
 
-      const deviceMatch = url.pathname.match(/^\/v1\/devices\/([^/]+)(?:\/(rpc))?$/)
+      const deviceMatch = url.pathname.match(/^\/v1\/devices\/([^/]+)(?:\/(rpc|term-ticket|owner))?$/)
       if (deviceMatch) {
         const deviceId = deviceMatch[1]
         if (deviceMatch[2] === 'rpc' && request.method === 'POST') return await proxyRpc(request, env, deviceId)
+        if (deviceMatch[2] === 'term-ticket' && request.method === 'POST') return await mintTerminalTicket(request, env, deviceId)
+        if (deviceMatch[2] === 'owner' && request.method === 'POST') return await claimOwner(request, env, deviceId)
         if (request.method === 'GET') return await deviceStatus(request, env, deviceId)
         if (request.method === 'DELETE') return await removeDevice(request, env, deviceId)
       }
@@ -170,6 +175,49 @@ async function proxyRpc(request: Request, env: Env, deviceId: string) {
   }))
 }
 
+async function mintTerminalTicket(request: Request, env: Env, deviceId: string) {
+  const device = await getAuthorizedDevice(env, deviceId, phoneSecretFrom(request))
+  await consumeRateLimit(env, `ticket:${deviceId}`, 30, 60_000)
+  const body = await readJson<{ clientId?: string; userId?: string }>(request, 16_384)
+  const stub = env.DEVICE_RELAY.get(env.DEVICE_RELAY.idFromName(device.id))
+  const minted = await stub.fetch(
+    authorizedRelayRequest(`https://relay.internal/${device.id}/term-ticket`, env, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ clientId: body.clientId, userId: body.userId ?? device.owner_user_id ?? '' }),
+    }),
+  )
+  if (!minted.ok) return minted
+  const ticket = await minted.json<{ ticket: string; expiresAt: string }>()
+  const wsUrl = new URL(request.url)
+  wsUrl.protocol = wsUrl.protocol === 'https:' ? 'wss:' : 'ws:'
+  wsUrl.pathname = `/v1/devices/${device.id}/term`
+  wsUrl.search = `ticket=${encodeURIComponent(ticket.ticket)}`
+  return json({ ...ticket, url: wsUrl.toString() }, 201)
+}
+
+async function claimOwner(request: Request, env: Env, deviceId: string) {
+  const device = await getAuthorizedDevice(env, deviceId, phoneSecretFrom(request))
+  const body = await readJson<{ userId?: string }>(request, 16_384)
+  const userId = String(body.userId ?? '').slice(0, 128)
+  if (!userId) throw new HttpError(400, 'userId is required')
+  if (device.owner_user_id && device.owner_user_id !== userId) {
+    return json({ error: 'Device already belongs to another account' }, 409)
+  }
+  await env.DB.prepare('UPDATE devices SET owner_user_id = ? WHERE id = ?').bind(userId, deviceId).run()
+  return json({ ownerUserId: userId })
+}
+
+async function connectBrowser(request: Request, env: Env, url: URL) {
+  // The ticket in the query string is the credential; the DO validates and
+  // burns it. No proxy secret here — browsers dial this URL directly.
+  const deviceId = url.pathname.split('/')[3]
+  const stub = env.DEVICE_RELAY.get(env.DEVICE_RELAY.idFromName(deviceId))
+  return stub.fetch(
+    authorizedRelayRequest(`https://relay.internal/${deviceId}/term${url.search}`, env, request),
+  )
+}
+
 async function getAuthorizedDevice(env: Env, deviceId: string, phoneSecret: string) {
   const device = await env.DB.prepare('SELECT * FROM devices WHERE id = ? AND revoked_at IS NULL').bind(deviceId).first<DeviceRow>()
   if (!device || !phoneSecret || !safeEqual(await hashSecret(phoneSecret), device.phone_secret_hash)) {
@@ -181,7 +229,7 @@ async function getAuthorizedDevice(env: Env, deviceId: string, phoneSecret: stri
 async function relayStatus(env: Env, deviceId: string) {
   const stub = env.DEVICE_RELAY.get(env.DEVICE_RELAY.idFromName(deviceId))
   const response = await stub.fetch(authorizedRelayRequest(`https://relay.internal/${deviceId}/status`, env))
-  return response.json<{ online: boolean; daemonOnline: boolean }>()
+  return response.json<{ online: boolean; daemonOnline: boolean; caps: Record<string, unknown> | null }>()
 }
 
 function authorizedRelayRequest(input: string, env: Env, init?: Request | RequestInit) {
@@ -191,13 +239,18 @@ function authorizedRelayRequest(input: string, env: Env, init?: Request | Reques
   return new Request(input, { ...init, headers })
 }
 
-function publicDevice(device: DeviceRow, relay: { online: boolean; daemonOnline: boolean }) {
+function publicDevice(
+  device: DeviceRow,
+  relay: { online: boolean; daemonOnline: boolean; caps?: Record<string, unknown> | null },
+) {
   return {
     id: device.id,
     name: device.name,
     platform: device.platform,
     online: relay.online,
     daemonOnline: relay.daemonOnline,
+    caps: relay.caps ?? null,
+    ownerUserId: device.owner_user_id || null,
     createdAt: new Date(device.created_at).toISOString(),
     lastSeenAt: device.last_seen_at ? new Date(device.last_seen_at).toISOString() : null,
   }

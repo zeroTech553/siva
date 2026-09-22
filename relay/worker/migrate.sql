@@ -19,6 +19,7 @@ CREATE TABLE devices (
   platform TEXT NOT NULL,
   phone_secret_hash TEXT NOT NULL,
   device_token_hash TEXT NOT NULL,
+  owner_user_id TEXT,
   created_at INTEGER NOT NULL,
   last_seen_at INTEGER,
   revoked_at INTEGER
