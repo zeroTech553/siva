@@ -39,28 +39,44 @@
   padding: 2px;
 }
 
+/* Desktop glyphs are hand-authored pixel sprites (pixel/sprites.mjs -> pnpm
+   sprites -> public/sprites/*.png). Unknown ids fall back to a plain tile. */
+
 .win95-glyph {
-  width: 24px;
-  height: 24px;
-  border: 2px solid var(--border);
-  background: var(--card);
+  width: 28px;
+  height: 28px;
+  background-color: transparent;
+  background-size: contain;
+  background-repeat: no-repeat;
+  image-rendering: pixelated;
 }
 
-.win95-glyph-computer,
+.win95-glyph-computer {
+  background-image: url('/sprites/computer.png');
+}
+
 .win95-glyph-agent {
-  background: var(--primary);
-}
-
-.win95-glyph-recycle {
-  background: #071e28;
-}
-
-.win95-glyph-player {
-  background: var(--accent);
+  background-image: url('/sprites/agent.png');
 }
 
 .win95-glyph-terminal {
-  background: #071e28;
+  background-image: url('/sprites/terminal.png');
+}
+
+.win95-glyph-files {
+  background-image: url('/sprites/files.png');
+}
+
+.win95-glyph-player {
+  background-image: url('/sprites/player.png');
+}
+
+.win95-glyph-recycle {
+  background-image: url('/sprites/recycle.png');
+}
+
+.win95-glyph-setup {
+  background-image: url('/sprites/setup.png');
 }
 
 .win95-window {
