@@ -205,3 +205,114 @@
 .machine-term-screen .xterm {
   height: 100%;
 }
+
+/* File browser — live listing of the paired machine's disk. */
+
+.file-browser {
+  display: flex;
+  min-height: 0;
+  flex: 1;
+  flex-direction: column;
+  background: var(--card);
+  color: var(--card-foreground);
+}
+
+.file-browser-bar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  border-bottom: 2px solid var(--border);
+  padding: 4px 6px;
+}
+
+.file-browser-path {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--font-ibm), ui-monospace, monospace;
+  font-size: 10px;
+  direction: rtl; /* keep the tail (deepest folder) visible when clipped */
+  text-align: left;
+}
+
+.file-browser-error {
+  padding: 6px 8px;
+  font-size: 11px;
+  color: var(--destructive);
+}
+
+.file-browser-note {
+  padding: 6px 8px;
+  font-size: 11px;
+  opacity: 0.75;
+  list-style: none;
+}
+
+.file-browser-list {
+  min-height: 0;
+  flex: 1;
+  overflow: auto;
+  margin: 0;
+  padding: 2px 0;
+  list-style: none;
+}
+
+.file-browser-entry {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  gap: 6px;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  padding: 3px 8px;
+  font-family: var(--font-ibm), ui-monospace, monospace;
+  font-size: 11px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.file-browser-entry:hover {
+  background: var(--primary);
+  color: var(--primary-foreground);
+}
+
+.file-browser-entry--dir .file-browser-name {
+  font-weight: 700;
+}
+
+.file-browser-glyph {
+  width: 10px;
+}
+
+.file-browser-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.file-browser-size {
+  margin-left: auto;
+  opacity: 0.6;
+}
+
+.file-browser-view {
+  min-height: 0;
+  flex: 1;
+  overflow: auto;
+  margin: 0;
+  padding: 6px 8px;
+  font-family: var(--font-ibm), ui-monospace, monospace;
+  font-size: 11px;
+  line-height: 1.5;
+  white-space: pre;
+}
+
+.file-browser-lineno {
+  display: inline-block;
+  min-width: 4ch;
+  margin-right: 1ch;
+  text-align: right;
+  opacity: 0.4;
+  user-select: none;
+}

@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { CdPlayer } from '@/components/desk/cd-player'
 import { ConsoleTranscript } from '@/components/agent/console-transcript'
 import { DeskComputer } from '@/components/desk/desk-computer'
+import { FileBrowser } from '@/components/files/file-browser'
 import { MachineTerminal } from '@/components/terminal/machine-terminal'
 import { Win95Button, Win95Desktop, Win95Icons, Win95Menu, Win95Taskbar, Win95Window } from '@/components/os/win95'
 import { cliOption } from '@/lib/shared/cli-catalog'
@@ -65,7 +66,7 @@ export function ConsoleFrame() {
   const [events, setEvents] = useState<JobEvent[]>([])
   const [error, setError] = useState('')
   const [answering, setAnswering] = useState(false)
-  const [deskApp, setDeskApp] = useState<'desktop' | 'agent' | 'terminal' | 'player' | 'setup' | 'computer'>('desktop')
+  const [deskApp, setDeskApp] = useState<'desktop' | 'agent' | 'terminal' | 'files' | 'player' | 'setup' | 'computer'>('desktop')
   const [startOpen, setStartOpen] = useState(false)
   const [clock, setClock] = useState('--:--')
   const [recycleNote, setRecycleNote] = useState('')
@@ -462,7 +463,8 @@ export function ConsoleFrame() {
           <Win95Icons
             items={[
               { id: 'agent', label: selected.name, icon: selected.logo, onClick: () => openApp('agent') },
-              { id: 'terminal', label: 'MS-DOS', onClick: () => openApp('terminal') },
+              { id: 'terminal', label: 'Terminal', onClick: () => openApp('terminal') },
+              { id: 'files', label: 'File Manager', onClick: () => openApp('files') },
               { id: 'player', label: 'CD Player', onClick: () => openApp('player') },
               { id: 'computer', label: 'My Computer', onClick: () => openApp('computer') },
               {
@@ -546,6 +548,11 @@ export function ConsoleFrame() {
             <MachineTerminal deviceId={deviceId} phoneSecret={phoneSecret} cwd={cwd} hostname={hostname} />
           </Win95Window>
         ) : null}
+        {deskApp === 'files' && deviceId && phoneSecret ? (
+          <Win95Window title="File Manager" status={hostname} onClose={() => openApp('desktop')}>
+            <FileBrowser deviceId={deviceId} phoneSecret={phoneSecret} initialPath={cwd || undefined} />
+          </Win95Window>
+        ) : null}
         {deskApp === 'player' ? (
           <Win95Window title="CD Player" status="MIDI" onClose={() => openApp('desktop')}>
             <CdPlayer />
@@ -618,7 +625,8 @@ export function ConsoleFrame() {
           <Win95Menu
             items={[
               { id: 'agent', label: selected.name, onClick: () => openApp('agent') },
-              { id: 'terminal', label: 'MS-DOS Prompt', onClick: () => openApp('terminal') },
+              { id: 'terminal', label: 'Terminal', onClick: () => openApp('terminal') },
+              { id: 'files', label: 'File Manager', onClick: () => openApp('files') },
               { id: 'player', label: 'CD Player', onClick: () => openApp('player') },
               { id: 'setup', label: 'Control Panel', onClick: () => openApp('setup') },
               { id: 'desktop', label: 'Desktop', onClick: () => openApp('desktop') },
@@ -631,7 +639,8 @@ export function ConsoleFrame() {
           clock={clock}
           items={[
             { id: 'agent', label: 'Agent', active: deskApp === 'agent', onClick: () => openApp('agent') },
-            { id: 'terminal', label: 'DOS', active: deskApp === 'terminal', onClick: () => openApp('terminal') },
+            { id: 'terminal', label: 'Terminal', active: deskApp === 'terminal', onClick: () => openApp('terminal') },
+            { id: 'files', label: 'Files', active: deskApp === 'files', onClick: () => openApp('files') },
             { id: 'player', label: 'CD', active: deskApp === 'player', onClick: () => openApp('player') },
           ]}
         />
