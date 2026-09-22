@@ -21,7 +21,7 @@ const nextConfig = {
         { source: '/install', destination: '/api/install/sh' },
         { source: '/install.py', destination: '/api/install/py' },
         { source: '/install.cmd', destination: '/api/install/cmd' },
-        { source: '/bridge.py', destination: '/api/bridge' },
+        { source: '/bridge.py', destination: '/api/bridge/forge_bridge.py' },
       ],
     }
   },

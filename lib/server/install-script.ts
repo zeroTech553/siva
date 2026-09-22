@@ -104,6 +104,24 @@ def download(path, destination):
         fail("could not download " + path + ": " + str(error))
 
 
+# The bridge is a handful of flat modules that all land in ~/.forge/ — the
+# entry point keeps its historic name bridge.py so autostart scripts,
+# process markers and older installs stay valid.
+BRIDGE_MODULES = [
+    "forge_pty.py",
+    "forge_crypto.py",
+    "forge_files.py",
+    "forge_frames.py",
+    "forge_audit.py",
+]
+
+
+def fetch_bridge():
+    download("/bridge.py", FORGE_HOME / "bridge.py")
+    for name in BRIDGE_MODULES:
+        download("/api/bridge/" + name, FORGE_HOME / name)
+
+
 def venv_python():
     return VENV_HOME / ("Scripts/python.exe" if os.name == "nt" else "bin/python")
 
@@ -778,8 +796,11 @@ def main():
     if not VENV_HOME.exists():
         run([sys.executable, "-m", "venv", str(VENV_HOME)])
     python = str(venv_python())
-    run([python, "-m", "pip", "install", "--disable-pip-version-check", "--quiet", "websocket-client==1.8.0"])
-    download("/bridge.py", FORGE_HOME / "bridge.py")
+    packages = ["websocket-client==1.8.0", "cryptography>=42"]
+    if os.name == "nt":
+        packages.append("pywinpty>=2.0")  # ConPTY backend for the real terminal
+    run([python, "-m", "pip", "install", "--disable-pip-version-check", "--quiet"] + packages)
+    fetch_bridge()
     print("Looking for the coding CLI on this laptop...")
     found = prepare_cli()
     print("Installing pinned local daemon...")
