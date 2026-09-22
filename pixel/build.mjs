@@ -94,3 +94,8 @@ for (const [name, grid] of Object.entries(SPRITES)) {
   writeFileSync(join(OUT_DIR, `${name}.png`), png)
   console.log(`sprites/${name}.png  ${grid[0].length * SCALE}×${grid.length * SCALE}  ${png.length} bytes`)
 }
+
+// The favicon is the computer sprite (Next.js app/icon.png convention).
+const ICON_PATH = join(dirname(fileURLToPath(import.meta.url)), '..', 'app', 'icon.png')
+writeFileSync(ICON_PATH, buildPng(SPRITES.computer, 2))
+console.log('app/icon.png  32×32 (favicon)')

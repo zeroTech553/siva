@@ -49,7 +49,7 @@ const sansFont = localFont({
 export const metadata: Metadata = {
   title: 'Forge',
   description:
-    'Visit the site, run one command on your laptop, control Claude Code from your phone. No signup.',
+    'Run one command on your laptop, then drive its terminal, files, and coding agents from any browser.',
   applicationName: 'Forge',
 }
 
