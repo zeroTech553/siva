@@ -44,7 +44,7 @@ siva/
 │
 ├── pixel/                  hand-authored pixel art
 │   ├── sprites.mjs         each icon as an editable character grid + palette
-│   └── build.mjs           grid → PNG in public/sprites/ (run `pnpm sprites`; output is committed)
+│   └── build.mjs           grid → PNG in public/sprites/ + app/icon.png favicon (run `pnpm sprites`; output is committed)
 │
 ├── assets/fonts/           self-hosted woff2 + their OFL license texts (no build-time Google fetch)
 ├── public/                 static web assets only: sprites, logos, wallpaper, upstream share client
@@ -66,7 +66,7 @@ siva/
 ├── supabase/migrations/    machines table + RLS (apply with supabase db push)
 ├── tests/                  node --test suites: relay routing rules + the full-pipe e2e
 │                           (relay → real Python bridge → real /bin/sh, encrypted end to end)
-├── docs/                   architecture, current state, this file
+├── docs/                   architecture, current state, this file (history/ = superseded plans)
 └── vendor/agent-remote/    upstream daemon at a pinned commit — do not edit; overlay it from bridge/overlay
 ```
 
