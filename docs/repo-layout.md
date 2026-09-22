@@ -11,9 +11,10 @@ siva/
 │   ├── console/page.tsx    the desk (terminal + agent + files) after a machine is connected
 │   ├── api/                server-only endpoints (proxy to the relay, installers, overlay files)
 │   │   ├── pair/           mint + claim pairing codes
-│   │   ├── devices/[id]/   device status, revoke
+│   │   ├── devices/[id]/   device status, revoke; terminal-ticket/ mints single-use WS tickets
 │   │   ├── install/[variant]/  sh | py | cmd installers (public URLs are rewrites, see next.config.mjs)
-│   │   ├── bridge/         serves bridge/*.py to the installer
+│   │   ├── bridge/[name]/  serves bridge/*.py modules to the installer
+│   │   ├── machines/       the signed-in user's machines (Supabase; 503 in device-only mode)
 │   │   ├── forge/[name]/   serves bridge/overlay/*.py (daemon provider overlays)
 │   │   └── agy/manifest/   Antigravity CLI binary manifest + fallback
 │   └── d/[deviceId]/[...path]/  generic RPC proxy: browser → relay → laptop daemon
@@ -22,29 +23,28 @@ siva/
 │   ├── desk/               the physical 90s machine: CRT, tower, keyboard, mouse, CD player
 │   ├── os/                 the retro OS chrome: desktop, window, taskbar, start menu, button
 │   ├── pairing/            first-run pairing flow
-│   ├── console/            the desk shell that hosts the apps (window/taskbar state machine)
-│   ├── terminal/           real terminal (xterm.js) + its toolbar
-│   ├── agent/              CLI-agent transcript, composer, permission/question prompts
-│   ├── files/              file tree + viewer for the laptop's disk
-│   └── auth/, machines/    Supabase sign-in, machine list
-│
-├── hooks/                  client-side state: device status, agent job stream, terminal session, clock
+│   ├── console/            the desk shell (console-frame) + control-panel
+│   ├── terminal/           machine-terminal.tsx — xterm.js over the encrypted relay pipe
+│   ├── agent/              use-agent-console.ts (state) + agent-window.tsx (UI) + transcript
+│   └── files/              file-browser.tsx — the laptop's disk over /api/fs/*
 │
 ├── lib/
-│   ├── shared/             imports fine on server *and* client: protocol frames, CLI catalog, daemon types
-│   ├── client/             browser-only: session storage, WebAudio, xterm transports, WebCrypto
-│   └── server/             node-only: relay proxy, installers, Supabase, ticket minting
-│       └── a file in here must never be imported from a 'use client' component
+│   ├── shared/             imports fine on server *and* client: CLI catalog, daemon types
+│   ├── client/             browser-only: terminal-{crypto,frames,connection}, account, session storage, WebAudio
+│   ├── server/             node-only: relay proxy, installer script, origin checks
+│   │   └── a file in here must never be imported from a 'use client' component
+│   └── supabase/           the only files that read Supabase env vars: config, client, server
 │
 ├── styles/                 one CSS file per concern; import order in app/globals.css IS the cascade
 │   ├── tokens.css          colours, radii, fonts, base layer, keyframes (retheme here)
 │   ├── desk.css            .desk-* .crt-* .tower-*   (hardware)
 │   ├── os.css              .win95-*                  (OS chrome)
-│   └── apps.css            .pair-* .forge-* .laptop-term-* .cd-* .os-pane (apps)
+│   └── apps.css            .pair-* .forge-* .machine-term-* .file-browser-* .cd-* .os-pane (apps)
 │       Namespaces are disjoint on purpose — that is what makes the split safe.
 │
-├── pixel/                  hand-authored pixel art: pixel maps as data + build script
-│   └── build.mjs           pixel map → palette-indexed PNG in public/sprites/ (run `pnpm sprites`)
+├── pixel/                  hand-authored pixel art
+│   ├── sprites.mjs         each icon as an editable character grid + palette
+│   └── build.mjs           grid → PNG in public/sprites/ (run `pnpm sprites`; output is committed)
 │
 ├── assets/fonts/           self-hosted woff2 + their OFL license texts (no build-time Google fetch)
 ├── public/                 static web assets only: sprites, logos, wallpaper, upstream share client
@@ -54,6 +54,7 @@ siva/
 │   ├── forge_pty.py        real PTY sessions: POSIX pty(4) and Windows ConPTY behind one interface
 │   ├── forge_files.py      file API rooted at home: list/read/write/edit/glob/grep/stat/up/download
 │   ├── forge_crypto.py     X25519 + AES-256-GCM so the relay only ever sees ciphertext
+│   ├── forge_frames.py     the 45-byte binary frame layout shared with the relay and browser
 │   ├── forge_audit.py      append-only JSON-lines audit log of every remote action
 │   └── overlay/*.py        dropped into the vendored daemon to add cursor/antigravity/opencode/copilot
 │
@@ -62,10 +63,10 @@ siva/
 │   ├── worker/             Cloudflare Worker + Durable Objects (production, zero idle cost)
 │   └── node/               Node relay for local dev and self-hosting (same frames, in-memory store)
 │
-├── supabase/               migrations + RLS policies (accounts, machines, terminal tickets, audit)
-├── scripts/                dev.sh (relay + bridge + web in one command), helpers
-├── tests/                  node --test suites for protocol/relay logic
-├── docs/                   architecture, protocol, security, runbook, UI guide, current state
+├── supabase/migrations/    machines table + RLS (apply with supabase db push)
+├── tests/                  node --test suites: relay routing rules + the full-pipe e2e
+│                           (relay → real Python bridge → real /bin/sh, encrypted end to end)
+├── docs/                   architecture, current state, this file
 └── vendor/agent-remote/    upstream daemon at a pinned commit — do not edit; overlay it from bridge/overlay
 ```
 
