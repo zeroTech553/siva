@@ -3,26 +3,37 @@ import { join } from 'node:path'
 
 export const runtime = 'nodejs'
 
-const FILES: Record<string, string> = {
-  'cli_launch.py': 'cli_launch.py',
-  'cursor.py': 'cursor.py',
-  'antigravity.py': 'antigravity.py',
-  'cli_provider.py': 'cli_provider.py',
-  'opencode.py': 'opencode.py',
-  'copilot.py': 'copilot.py',
-  'forge_hook.py': 'forge_hook.py',
-}
+/**
+ * Daemon overlay files. The installer downloads these and drops them into the
+ * vendored `agentremoted` checkout on the laptop, which is how Forge adds the
+ * Cursor / Antigravity / OpenCode / Copilot providers and the CLI launcher hook
+ * without forking the daemon (see `overlay_daemon()` in
+ * `lib/server/install-script.ts`).
+ *
+ * Source of truth: `bridge/overlay/`. They are deliberately *not* in `public/`
+ * — `public/` is static web assets, these are laptop-side Python.
+ */
+const OVERLAY_DIR = join(process.cwd(), 'bridge', 'overlay')
 
-export async function GET(
-  _request: Request,
-  context: { params: Promise<{ name: string }> },
-) {
-  const { name } = await context.params
-  const file = FILES[name]
-  if (!file) {
-    return new Response('not found', { status: 404 })
+const OVERLAY_FILES = new Set([
+  'cli_launch.py',
+  'cli_provider.py',
+  'cursor.py',
+  'antigravity.py',
+  'opencode.py',
+  'copilot.py',
+  'forge_hook.py',
+])
+
+type Context = { params: Promise<{ name: string }> }
+
+export async function GET(_request: Request, { params }: Context) {
+  const { name } = await params
+  if (!OVERLAY_FILES.has(name)) {
+    return new Response('not found\n', { status: 404 })
   }
-  const body = await readFile(join(process.cwd(), 'public', 'forge', file), 'utf8')
+
+  const body = await readFile(join(OVERLAY_DIR, name), 'utf8')
   return new Response(body, {
     headers: {
       'Content-Type': 'text/x-python; charset=utf-8',

@@ -13,5 +13,11 @@ __v0_jsx-dev-runtime.ts
 node_modules
 .next/
 **/__pycache__/
-worker/.wrangler/
+relay/worker/.wrangler/
 .DS_Store
+
+# TypeScript incremental build info
+*.tsbuildinfo
+
+# Local Python venv for bridge tests
+.venv/

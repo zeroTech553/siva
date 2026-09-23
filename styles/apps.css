@@ -1,0 +1,318 @@
+/* styles/apps.css — the apps that run inside an OS window: pairing, agent console,
+   terminal, CD player, control panel. Owned by components/{pairing,agent,terminal,console}/*. */
+
+
+
+.cli-icon-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+  padding: 8px;
+}
+
+.cli-icon {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  border: 2px solid transparent;
+  padding: 6px 4px;
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.cli-icon-selected {
+  border-color: var(--primary);
+  background: var(--card);
+  box-shadow: 2px 2px 0 var(--border);
+}
+
+.cli-icon img {
+  width: 24px;
+  height: 24px;
+  object-fit: contain;
+}
+
+.pair-pane {
+  display: flex;
+  min-height: 0;
+  flex: 1;
+  flex-direction: column;
+  gap: 6px;
+  overflow: auto;
+  padding: 8px;
+}
+
+.pair-kicker {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.pair-code {
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 18px;
+  letter-spacing: 0.1em;
+}
+
+.pair-command {
+  max-height: 72px;
+  overflow: auto;
+  border: 2px solid var(--border);
+  background: #071e28;
+  color: var(--card);
+  padding: 6px;
+  font-size: 9px;
+  line-height: 1.4;
+  white-space: pre-wrap;
+}
+
+.pair-actions,
+.cd-actions,
+.os-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.cd-player,
+.os-pane {
+  display: flex;
+  min-height: 0;
+  flex: 1;
+  flex-direction: column;
+  gap: 8px;
+  overflow: auto;
+  padding: 8px;
+  font-size: 11px;
+}
+
+.cd-disc {
+  border: 2px solid var(--border);
+  background: #071e28;
+  color: var(--card);
+  padding: 8px;
+  font-family: var(--font-mono), ui-monospace, monospace;
+}
+
+.cd-player select,
+.os-pane select,
+.os-pane input,
+.forge-prompt textarea {
+  width: 100%;
+  border: 2px solid var(--border);
+  background: var(--card);
+  padding: 6px;
+  color: var(--foreground);
+}
+
+.forge-work-log {
+  min-height: 0;
+  flex: 1;
+  overflow: auto;
+  background: var(--card);
+}
+
+.forge-prompt {
+  display: flex;
+  gap: 6px;
+  border-top: 2px solid var(--border);
+  padding: 6px;
+}
+
+.forge-prompt textarea {
+  min-height: 48px;
+  resize: none;
+}
+
+.forge-ask {
+  margin: 6px;
+  border: 2px solid var(--border);
+  background: var(--card);
+  padding: 8px;
+  box-shadow: 2px 2px 0 var(--border);
+}
+
+.forge-ask div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.forge-work-error {
+  padding: 4px 8px;
+  font-size: 11px;
+}
+
+/* Machine terminal — the real PTY streamed from the paired laptop.
+   xterm.js draws the screen; these rules only frame it. */
+
+.machine-term {
+  display: flex;
+  min-height: 0;
+  flex: 1;
+  flex-direction: column;
+  background: #071e28;
+}
+
+.machine-term-bar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--primary);
+  color: var(--primary-foreground);
+  padding: 4px 6px;
+  font-size: 10px;
+}
+
+.machine-term-title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  margin-left: auto;
+  opacity: 0.85;
+}
+
+.machine-term-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #888;
+}
+
+.machine-term-dot--ready {
+  background: #58d858;
+}
+
+.machine-term-dot--connecting,
+.machine-term-dot--reconnecting {
+  background: #e8c34a;
+  animation: pixel-blink 1.2s ease-in-out infinite;
+}
+
+.machine-term-dot--offline,
+.machine-term-dot--closed {
+  background: #d85858;
+}
+
+.machine-term-screen {
+  min-height: 0;
+  flex: 1;
+  padding: 4px;
+}
+
+.machine-term-screen .xterm {
+  height: 100%;
+}
+
+/* File browser — live listing of the paired machine's disk. */
+
+.file-browser {
+  display: flex;
+  min-height: 0;
+  flex: 1;
+  flex-direction: column;
+  background: var(--card);
+  color: var(--card-foreground);
+}
+
+.file-browser-bar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  border-bottom: 2px solid var(--border);
+  padding: 4px 6px;
+}
+
+.file-browser-path {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--font-ibm), ui-monospace, monospace;
+  font-size: 10px;
+  direction: rtl; /* keep the tail (deepest folder) visible when clipped */
+  text-align: left;
+}
+
+.file-browser-error {
+  padding: 6px 8px;
+  font-size: 11px;
+  color: var(--destructive);
+}
+
+.file-browser-note {
+  padding: 6px 8px;
+  font-size: 11px;
+  opacity: 0.75;
+  list-style: none;
+}
+
+.file-browser-list {
+  min-height: 0;
+  flex: 1;
+  overflow: auto;
+  margin: 0;
+  padding: 2px 0;
+  list-style: none;
+}
+
+.file-browser-entry {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  gap: 6px;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  padding: 3px 8px;
+  font-family: var(--font-ibm), ui-monospace, monospace;
+  font-size: 11px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.file-browser-entry:hover {
+  background: var(--primary);
+  color: var(--primary-foreground);
+}
+
+.file-browser-entry--dir .file-browser-name {
+  font-weight: 700;
+}
+
+.file-browser-glyph {
+  width: 10px;
+}
+
+.file-browser-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.file-browser-size {
+  margin-left: auto;
+  opacity: 0.6;
+}
+
+.file-browser-view {
+  min-height: 0;
+  flex: 1;
+  overflow: auto;
+  margin: 0;
+  padding: 6px 8px;
+  font-family: var(--font-ibm), ui-monospace, monospace;
+  font-size: 11px;
+  line-height: 1.5;
+  white-space: pre;
+}
+
+.file-browser-lineno {
+  display: inline-block;
+  min-width: 4ch;
+  margin-right: 1ch;
+  text-align: right;
+  opacity: 0.4;
+  user-select: none;
+}

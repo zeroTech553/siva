@@ -1,4 +1,4 @@
-import { relayFetch, relayPhoneHeaders, requireSameOrigin } from '@/lib/relay'
+import { relayFetch, relayPhoneHeaders, requireSameOrigin } from '@/lib/server/relay'
 
 export async function POST(request: Request) {
   const blocked = requireSameOrigin(request)

@@ -1,4 +1,4 @@
-import { relayFetch, relayPhoneHeaders, requireSameOrigin } from '@/lib/relay'
+import { relayFetch, relayPhoneHeaders, requireSameOrigin } from '@/lib/server/relay'
 
 type Context = { params: Promise<{ id: string }> }
 
