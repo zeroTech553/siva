@@ -91,6 +91,7 @@ class AntigravityRunner:
             session_id=getattr(job, "session_id", "") or "",
             permission_mode=mode,
             flavor="agy",
+            model=getattr(job, "model", "") or "",
         )
         env = dict(os.environ)
         extra = getattr(self.config, "agy_env", None) or {}

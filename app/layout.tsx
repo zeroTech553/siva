@@ -47,15 +47,15 @@ const sansFont = localFont({
 })
 
 export const metadata: Metadata = {
-  title: 'Forge',
+  title: 'Forge — your computer, in your pocket',
   description:
-    'Run one command on your laptop, then drive its terminal, files, and coding agents from any browser.',
+    'Run one command on your laptop, then drive its real terminal, its files and its coding CLIs — Claude Code, Codex, Cursor, OpenCode, Copilot or Antigravity — from any browser.',
   applicationName: 'Forge',
 }
 
 export const viewport: Viewport = {
   colorScheme: 'light',
-  themeColor: '#16a6c8',
+  themeColor: '#45bcd4',
   width: 'device-width',
   initialScale: 1,
   userScalable: false,

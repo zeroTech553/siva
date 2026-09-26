@@ -7,6 +7,32 @@ ship real browser terminals, remote CLI agents, and remote file access.
 This document is the honest baseline. `docs/forge-architecture.md` is the *intended* design;
 this file is what the code *actually does* — and where the two disagree.
 
+> ## Read this first — what has changed since
+>
+> This file is a **snapshot dated 2026-09-22** and is kept as the honest baseline: everything below
+> was true when it was written. Since then, in this order:
+>
+> - **PR #1** shipped most of §5 steps 1–4: a real PTY terminal (xterm.js over the encrypted relay
+>   pipe, `components/terminal/machine-terminal.tsx`), the bridge-served files API, Supabase
+>   accounts + RLS, the hand-authored pixel-art sprite pipeline (`pixel/`), the `styles/` split, and
+>   X25519 + AES-256-GCM end-to-end encryption (`lib/client/terminal-crypto.ts`,
+>   `bridge/forge_crypto.py`) — so the relay really is zero-knowledge now.
+> - **Phase 2 (Zero OS)** replaced the desk theme with `components/computer/`: a small front-view
+>   chassis, a Windows-style CRT boot into the Zero OS logo, a working keyboard and mouse, and a
+>   window manager written as a pure reducer (`components/computer/os/window-manager.ts`,
+>   unit-tested). It also added the landing page (`components/landing/`), the CLI selector with
+>   per-CLI models and flags (`components/cli/` + `lib/shared/cli-flags.ts`), a browser-side demo
+>   shell (`components/terminal/demo-terminal.tsx`) and the "Send a prompt" composer
+>   (`components/cli/prompt-composer.tsx`).
+> - **Phase 3 (cost)** replaced every fixed-interval poll with `lib/client/polite-polling.ts`
+>   (a hidden tab makes **zero** requests, adaptive backoff while idle, an immediate tick on
+>   refocus), cut `proxy.ts` down to the only route that reads the session cookie so `/` and
+>   `/console` are served as static CDN hits, capped every API function at `maxDuration = 60`, and
+>   added CDN caching for static assets, the installer and the Antigravity manifest.
+>
+> For where files live **today**, read `docs/repo-layout.md`. The rest of this document is history.
+
+
 ---
 
 ## 1. One-paragraph summary
@@ -23,8 +49,8 @@ on the laptop (the vendored `agentremoted` daemon + a small Python `forge-bridge
 Phone/laptop browser                You operate (Cloudflare)              User's machine
 ┌────────────────────────┐        ┌──────────────────────────┐        ┌──────────────────────────────┐
 │ Next.js on Vercel      │        │ Worker `forge-relay`     │        │ forge_bridge.py              │
-│  /            pairing  │ HTTPS  │  D1: pairing_codes,      │  WSS   │  • outbound socket + backoff │
-│  /console     desk UI  │───────▶│      devices, rate_limits│◀───────│  • heartbeat 15s (daemonOnline)│
+│  /            landing  │ HTTPS  │  D1: pairing_codes,      │  WSS   │  • outbound socket + backoff │
+│  /console     Zero OS  │───────▶│      devices, rate_limits│◀───────│  • heartbeat 15s (daemonOnline)│
 │  /api/*       proxy    │  JSON  │  DO `DeviceRelay`        │  out   │  • RPC proxy → localhost     │
 │  /d/[device]/[...path] │        │  (one per laptop)        │  only  │  • injects X-Auth-Token      │
 │  /install*  installers │        │                          │        │        ▼                     │
@@ -43,12 +69,12 @@ Phone/laptop browser                You operate (Cloudflare)              User's
 |---|---|---|
 | Mint code | `POST /api/pair` → `worker: createPair` | 9-char code `ABC-DEF-GHJ` from a 32-char Crockford-ish alphabet (~3.5e13), 10-min TTL, single-use, 12/min/IP rate limit |
 | Phone secret | same call | 32-byte random `phoneSecret`; only `sha256` of it is stored (`pairing_codes.phone_secret_hash`) |
-| Install command | `pairing-screen.tsx` | Unix: `curl -fsSL <origin>/install \| bash -s -- CODE cli`. Windows: `curl.exe … /install.cmd … CODE cli` |
+| Install command | `components/pairing/use-pairing.ts` | Unix: `curl -fsSL <origin>/install \| bash -s -- CODE cli`. Windows: `curl.exe … /install.cmd … CODE cli` |
 | Installer | `/install` (bash stub) → `/install.py` (826-line Python installer in `lib/install-script.ts`) | Requires `python3`; creates `~/.forge`, a venv, `pip install websocket-client==1.8.0`; kills previous Forge processes; detects/installs CLIs (incl. downloading Antigravity `agy` from Google storage with sha512 check, `npm i -g @anthropic-ai/claude-code`, `winget` fallback) |
 | Claim | `POST /api/pair/claim` → `worker: claimPair` | Creates the `devices` row, mints `deviceToken` (hashed at rest), returns `deviceId` + `workerWebSocketUrl` (`wss://…/v1/devices/{id}/connect?token=…`) |
 | Persist | installer | Writes `~/.forge/config.json`; installs `agentremoted` from a **pinned upstream commit** (`DAEMON_COMMIT = fb8ec4e…`, `overlay_daemon()`); writes `~/.agentremoted/config.json` bound to `127.0.0.1:8473` |
 | Autostart | installer | macOS launchd, Linux `systemd --user`, Windows Startup-folder VBScript |
-| Browser side | `pairing-screen.tsx` | Stores `{code, phoneSecret, expiresAt, deviceId, hostname}` in `localStorage['forge.v1']`; polls `/api/pair?code=…` then `/api/devices/{id}` every 1.5 s until `online`, then `router.push('/console')` |
+| Browser side | `components/pairing/use-pairing.ts` | Stores `{code, phoneSecret, expiresAt, deviceId, hostname}` in `localStorage['forge.v1']`, then polls `/api/pair?code=…` and `/api/devices/{id}` through `startPolitePolling` (base 1.2 s, backing off to 8 s, **zero requests while the tab is hidden**) until `online`. The landing page no longer navigates away by itself: it flips the demo terminal to the real PTY and offers "Open console". |
 
 ### 2.2 The pipe (relay + RPC)
 
@@ -75,18 +101,22 @@ Phone/laptop browser                You operate (Cloudflare)              User's
   commands** through `/api/shell` (`resolveLaptopHome()`).
 - Prompt send: `POST /api/sessions/new` or `POST /api/sessions/{id}/continue` with
   `{prompt, permission_mode}`; falls back across the provider queue if one fails.
-- Live job stream: polls `GET /api/jobs/{id}?since={seq}` **every 250 ms**, merges events, tracks
+- Live job stream: polls `GET /api/jobs/{id}?since={seq}` (was a flat 250 ms `setInterval`; Phase 3
+  made it `startPolitePolling` with `JOB_POLL_SCHEDULE` — ~350 ms while events arrive, backing off to
+  4 s while the CLI thinks, nothing at all while hidden, and it stops itself when the job ends),
+  merges events, tracks
   `next_seq`, and surfaces `pending_permission` (Allow/Deny) and `pending_question`
   (options / Skip) inline.
 - Permission modes exposed: `bypassPermissions` ("Full access", **the default**), `acceptEdits`,
   `plan`, `''` ("Ask each time").
-- Extras: stop job, new chat, reset pairing, CD player (WebAudio chiptunes in `lib/desk-sound.ts`),
+- Extras: stop job, new chat, reset pairing, CD player (WebAudio chiptunes in `lib/client/zero-sound.ts`),
   BIOS boot screen, CRT power/brightness knobs, draggable on-screen mouse that click-throughs to
   real DOM elements, on-screen keyboard that types into focused inputs.
 
 ### 2.4 The "terminal" — **not a real terminal**
 
-`components/laptop-terminal.tsx` is a line-based command runner:
+`components/laptop-terminal.tsx` — **removed in PR #1**, replaced by the real PTY in
+`components/terminal/machine-terminal.tsx` — was a line-based command runner:
 
 - You type a line → it is wrapped (`cmd & echo __FORGE_CWD__ & cd` on Windows, or
   `cmd\nprintf '__FORGE_CWD__:%s' "$(pwd)"` on Unix) → `POST /api/shell` → the whole output is
@@ -127,7 +157,7 @@ no sessions history across devices.
 | Bridge auto-update via `GET /v1/version` | Not implemented. Users re-run the install command forever |
 | Local audit log `~/.forge/audit.log` of every remote command | Not implemented |
 | Pairing code `XXXX-XXXX`, 8 chars | Worker uses `XXX-XXX-XXX`, 9 chars. `lib/crypto.ts:randomCode()/normalizeCode()` still implement the 8-char version and are **dead code** (only `publicOrigin` from that file is used) |
-| shadcn/ui component library | All 21 components in `components/ui/` are **imported by nothing**. The desk UI is hand-rolled CSS |
+| shadcn/ui component library | All 21 components in `components/ui/` were **imported by nothing**; the folder was deleted in PR #1. The Zero OS UI is hand-rolled CSS (`styles/`) |
 | Guest sandbox on by default (upstream seatbelt jail) | Installer does not enable it; default permission mode is `bypassPermissions` |
 
 Other production gaps: `phoneSecret` is accepted from a `?token=` query param (`lib/relay.ts`,
@@ -314,11 +344,13 @@ Your four decisions: **Supabase accounts**, **direct WebSocket to the Cloudflare
 4. **Pixel-art monitor UI + clean files.** Hand-authored sprite pipeline (pixel maps in code →
    PNG/SVG, committed, editable) for monitor/tower/keyboard/mouse/icons/wallpaper; `globals.css`
    (1413 lines) split into `styles/` modules; `console-frame.tsx` (676 lines) split into
-   `components/desk/*`, `components/os/*`, `components/terminal/*`, `components/agent/*`,
+   `components/desk/*`, `components/os/*` (both now `components/computer/*`), `components/terminal/*`,
+   `components/agent/*`,
    `components/files/*` + `hooks/*`; delete the 21 unused shadcn components or start using them;
    delete dead `lib/crypto.ts` code and reconcile the pairing-code format.
 5. **Production hardening.** E2E encryption (X25519 + AES-256-GCM) or an explicit, documented
    decision not to; device identity challenge-response; offline queue in DO SQLite; `/v1/version`
    auto-update; `/v1/abuse`; per-device secret rotation; drop `?token=` secrets from URLs;
    audit log; stop defaulting to `bypassPermissions`; replace 250 ms job polling with the daemon's
-   `/ws/status` or SSE over the RPC stream.
+   `/ws/status` or SSE over the RPC stream. *(The polling half is done — Phase 3; a pushed channel
+   would still be cheaper than any poll.)*

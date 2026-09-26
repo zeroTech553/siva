@@ -1,4 +1,5 @@
 import { PUBLISHED_APP_ORIGIN } from '@/lib/server/app-origin'
+import { allowedOrigins, proxySecret, relayUrl } from '@/lib/server/env'
 import { json } from '@/lib/server/http'
 
 const PHONE_SECRET_HEADER = 'x-forge-phone-secret'
@@ -11,20 +12,13 @@ function originHost(value: string) {
   }
 }
 
-function allowedOrigins(request: Request) {
+function trustedOrigins(request: Request) {
   const requestUrl = new URL(request.url)
   const forwardedHost = request.headers.get('x-forwarded-host')?.split(',')[0]?.trim()
   const forwardedProto = request.headers.get('x-forwarded-proto')?.split(',')[0]?.trim() || 'https'
   const origins = new Set<string>([requestUrl.origin, PUBLISHED_APP_ORIGIN])
   if (forwardedHost) origins.add(`${forwardedProto}://${forwardedHost}`)
-  for (const extra of (process.env.ALLOWED_ORIGINS ?? '').split(',')) {
-    const trimmed = extra.trim().replace(/\/+$/, '')
-    if (trimmed) origins.add(trimmed)
-  }
-  for (const extra of [process.env.APP_URL, process.env.NEXT_PUBLIC_APP_URL]) {
-    const trimmed = extra?.trim().replace(/\/+$/, '')
-    if (trimmed) origins.add(trimmed)
-  }
+  for (const extra of allowedOrigins()) origins.add(extra)
   return origins
 }
 
@@ -53,7 +47,7 @@ export function requireSameOrigin(request: Request) {
     if (!site || site === 'same-origin' || site === 'none') return null
     return json({ error: 'Origin header required' }, 403)
   }
-  if (allowedOrigins(request).has(origin)) return null
+  if (trustedOrigins(request).has(origin)) return null
   const host = originHost(origin)
   if (host && isTrustedPreviewHost(host)) return null
   return json({ error: 'Cross-origin request blocked' }, 403)
@@ -68,12 +62,17 @@ export function phoneSecret(request: Request) {
 }
 
 export async function relayFetch(path: string, init: RequestInit = {}) {
-  const relayUrl = process.env.CLOUDFLARE_WORKER_URL?.replace(/\/+$/, '')
-  const proxySecret = process.env.WORKER_PROXY_SECRET
-  if (!relayUrl || !proxySecret) {
+  const base = relayUrl()
+  const secret = proxySecret()
+  // A malformed URL used to reach fetch() as `function relayUrl(){…}/v1/pairs`
+  // and surface as a 502 "relay unavailable", which sent one engineer looking at
+  // the network instead of at the string. Fail here, with the value, instead.
+  if (!base || !/^https?:\/\//.test(base) || !secret) {
     return json(
       {
-        error: 'Forge relay is not configured',
+        error: base
+          ? `CLOUDFLARE_WORKER_URL must be an http(s) URL (got "${base}")`
+          : 'Forge relay is not configured',
         code: 'RELAY_NOT_CONFIGURED',
       },
       503,
@@ -81,10 +80,10 @@ export async function relayFetch(path: string, init: RequestInit = {}) {
   }
 
   const headers = new Headers(init.headers)
-  headers.set('x-forge-proxy-secret', proxySecret)
+  headers.set('x-forge-proxy-secret', secret)
   headers.set('accept', headers.get('accept') ?? 'application/json')
   try {
-    const response = await fetch(`${relayUrl}${path}`, {
+    const response = await fetch(`${base}${path}`, {
       ...init,
       headers,
       cache: 'no-store',

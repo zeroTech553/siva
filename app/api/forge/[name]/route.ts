@@ -3,10 +3,17 @@ import { join } from 'node:path'
 
 export const runtime = 'nodejs'
 
+// Vercel: a hard ceiling on this function's wall time. Everything in this file
+// is one short round-trip (relay, database, or a rendered string), so 60s is a
+// cap that should never be approached — it exists to stop a hung upstream from
+// billing a full timeout.
+export const maxDuration = 60
+
 /**
  * Daemon overlay files. The installer downloads these and drops them into the
  * vendored `agentremoted` checkout on the laptop, which is how Forge adds the
- * Cursor / Antigravity / OpenCode / Copilot providers and the CLI launcher hook
+ * Cursor / Antigravity / OpenCode / Copilot providers, the codex permission
+ * wrapper and the CLI launcher hook
  * without forking the daemon (see `overlay_daemon()` in
  * `lib/server/install-script.ts`).
  *
@@ -18,6 +25,7 @@ const OVERLAY_DIR = join(process.cwd(), 'bridge', 'overlay')
 const OVERLAY_FILES = new Set([
   'cli_launch.py',
   'cli_provider.py',
+  'codex_mode.py',
   'cursor.py',
   'antigravity.py',
   'opencode.py',
@@ -37,6 +45,10 @@ export async function GET(_request: Request, { params }: Context) {
   return new Response(body, {
     headers: {
       'Content-Type': 'text/x-python; charset=utf-8',
+      // Deliberately no-store: these are protocol-critical Python modules that
+      // the installer writes into ~/.forge/. A stale copy paired against a new
+      // relay would break in confusing ways, and installs are rare enough that
+      // the invocations are not worth the risk.
       'Cache-Control': 'no-store',
       'X-Content-Type-Options': 'nosniff',
     },

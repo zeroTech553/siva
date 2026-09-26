@@ -9,7 +9,7 @@
 
 import { useCallback, useEffect, useState } from 'react'
 
-import { Win95Button } from '@/components/os/win95'
+import { OsButton } from '@/components/computer/os/os-ui'
 import { DeviceRpcError, deviceRpc } from '@/lib/client/device-rpc'
 
 type Entry = {
@@ -120,9 +120,9 @@ export function FileBrowser({
     <section className="file-browser">
       <header className="file-browser-bar">
         {listing?.parent && !file ? (
-          <Win95Button onClick={() => void openDir(listing.parent!)}>Up</Win95Button>
+          <OsButton onClick={() => void openDir(listing.parent!)}>Up</OsButton>
         ) : null}
-        {file ? <Win95Button onClick={() => setFile(null)}>Back</Win95Button> : null}
+        {file ? <OsButton onClick={() => setFile(null)}>Back</OsButton> : null}
         <span className="file-browser-path" title={crumb}>
           {crumb || '…'}
         </span>

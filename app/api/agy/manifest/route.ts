@@ -20,6 +20,15 @@ const WINDOWS_AMD64_FALLBACK = {
 
 export const runtime = 'nodejs'
 
+/** Browsers revalidate every time; the CDN serves it for 30 minutes. */
+const MANIFEST_CACHE = 'public, max-age=0, s-maxage=1800, stale-while-revalidate=86400'
+
+// Vercel: a hard ceiling on this function's wall time. Everything in this file
+// is one short round-trip (relay, database, or a rendered string), so 60s is a
+// cap that should never be approached — it exists to stop a hung upstream from
+// billing a full timeout.
+export const maxDuration = 60
+
 export async function GET(request: Request) {
   const platform = new URL(request.url).searchParams.get('platform') || 'windows_amd64'
   if (!ALLOWED.has(platform)) {
@@ -33,7 +42,10 @@ export async function GET(request: Request) {
     if (response.ok) {
       const data = await response.json()
       if (data?.url) {
-        return Response.json(data, { headers: { 'Cache-Control': 'no-store' } })
+        // A CLI version manifest changes a few times a month: let the edge
+        // hold it for 30 minutes (and serve stale for a day if the upstream
+        // updater is down) instead of paying a function + a third-party fetch.
+        return Response.json(data, { headers: { 'Cache-Control': MANIFEST_CACHE } })
       }
     }
   } catch {
@@ -41,7 +53,7 @@ export async function GET(request: Request) {
     // known GCS binary URL so install can continue.
   }
   if (platform === 'windows_amd64') {
-    return Response.json(WINDOWS_AMD64_FALLBACK, { headers: { 'Cache-Control': 'no-store' } })
+    return Response.json(WINDOWS_AMD64_FALLBACK, { headers: { 'Cache-Control': MANIFEST_CACHE } })
   }
   return Response.json({ error: 'manifest unavailable' }, { status: 502 })
 }

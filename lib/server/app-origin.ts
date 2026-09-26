@@ -1,24 +1,25 @@
-export const PUBLISHED_APP_ORIGIN = 'https://clone-github-repository-olive.vercel.app'
+/**
+ * lib/server/app-origin.ts — node-only origin helpers.
+ *
+ * Constants and pure predicates are re-exported from lib/shared/app-origin.ts so
+ * the browser and the server can never disagree about what a private host is.
+ * What stays here needs `process.env` or a `Request`.
+ */
+
+import { appUrl } from '@/lib/server/env'
+import { PUBLISHED_APP_ORIGIN, isPrivateHost } from '@/lib/shared/app-origin'
+
+export { PUBLISHED_APP_ORIGIN, isPrivateHost }
+export { hostOf, installOrigin } from '@/lib/shared/app-origin'
 
 export function configuredAppOrigin() {
-  return (
-    process.env.NEXT_PUBLIC_APP_URL ||
-    process.env.APP_URL ||
-    PUBLISHED_APP_ORIGIN
-  ).replace(/\/+$/, '')
+  return (appUrl() || PUBLISHED_APP_ORIGIN).replace(/\/+$/, '')
 }
 
-export function isPrivateHost(hostname: string) {
-  return (
-    hostname === 'localhost' ||
-    hostname === '127.0.0.1' ||
-    hostname.endsWith('.local') ||
-    hostname.endsWith('.v0.build') ||
-    hostname.endsWith('.v0.app') ||
-    hostname.endsWith('.vercel.run')
-  )
-}
-
+/**
+ * The origin to print in an installer: the real host when this deployment has
+ * one, otherwise the published URL (a laptop cannot reach a preview host).
+ */
 export function publicAppOrigin(request: Request) {
   const configured = configuredAppOrigin()
   const proto = request.headers.get('x-forwarded-proto') || 'https'

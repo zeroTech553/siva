@@ -7,6 +7,9 @@
 // device-only mode (pairing state lives in localStorage, exactly as before).
 // Nothing else in the app is allowed to read these env vars directly.
 
+// lib/server/env.ts owns the documentation and validation of these; this file
+// only turns them into a client. It must stay readable from the browser, so it
+// reads NEXT_PUBLIC_* directly rather than importing the node-only env module.
 export const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL ?? ''
 export const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? ''
 

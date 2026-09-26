@@ -7,6 +7,12 @@ import {
 
 export const runtime = 'nodejs'
 
+// Vercel: a hard ceiling on this function's wall time. Everything in this file
+// is one short round-trip (relay, database, or a rendered string), so 60s is a
+// cap that should never be approached — it exists to stop a hung upstream from
+// billing a full timeout.
+export const maxDuration = 60
+
 /**
  * One route, three installer flavours. The public URLs stay the short ones
  * users copy (`/install`, `/install.py`, `/install.cmd`) — `next.config.mjs`
@@ -49,7 +55,10 @@ export async function GET(request: Request, { params }: Context) {
     headers: {
       'Content-Type': entry.contentType,
       'Content-Disposition': `inline; filename="${entry.filename}"`,
-      'Cache-Control': 'no-store',
+      // CDN-cacheable: the script is templated with the request's own origin
+      // and Vercel keys the cache per host, so a 10-minute edge cache is safe
+      // and turns repeat/parallel installs into zero invocations.
+      'Cache-Control': 'public, max-age=60, s-maxage=600, stale-while-revalidate=3600',
       'X-Content-Type-Options': 'nosniff',
     },
   })

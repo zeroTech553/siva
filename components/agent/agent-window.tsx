@@ -7,7 +7,7 @@ import { useEffect, useRef, type KeyboardEvent } from 'react'
 
 import type { AgentConsole } from '@/components/agent/use-agent-console'
 import { ConsoleTranscript } from '@/components/agent/console-transcript'
-import { Win95Button } from '@/components/os/win95'
+import { OsButton } from '@/components/computer/os/os-ui'
 import { optionLabel, questionLabel } from '@/lib/shared/daemon'
 
 export function AgentWindow({
@@ -49,8 +49,8 @@ export function AgentWindow({
               {agent.job.pending_permission.detail ? ` — ${agent.job.pending_permission.detail}` : ''}?
             </p>
             <div>
-              <Win95Button onClick={() => void agent.answerPermission(true)}>Allow</Win95Button>
-              <Win95Button onClick={() => void agent.answerPermission(false)}>Deny</Win95Button>
+              <OsButton onClick={() => void agent.answerPermission(true)}>Allow</OsButton>
+              <OsButton onClick={() => void agent.answerPermission(false)}>Deny</OsButton>
             </div>
           </section>
         ) : null}
@@ -63,15 +63,15 @@ export function AgentWindow({
                   {(question.options || []).map((option) => {
                     const label = optionLabel(option)
                     return (
-                      <Win95Button key={label} onClick={() => void agent.answerQuestion(question, label)}>
+                      <OsButton key={label} onClick={() => void agent.answerQuestion(question, label)}>
                         {label}
-                      </Win95Button>
+                      </OsButton>
                     )
                   })}
                 </div>
               </div>
             ))}
-            <Win95Button onClick={() => void agent.cancelQuestion()}>Skip</Win95Button>
+            <OsButton onClick={() => void agent.cancelQuestion()}>Skip</OsButton>
           </section>
         ) : null}
       </div>
@@ -92,9 +92,9 @@ export function AgentWindow({
           aria-label="Prompt"
         />
         {agent.working ? (
-          <Win95Button onClick={() => void agent.stopJob()}>Stop</Win95Button>
+          <OsButton onClick={() => void agent.stopJob()}>Stop</OsButton>
         ) : (
-          <Win95Button type="submit">Send</Win95Button>
+          <OsButton type="submit">Send</OsButton>
         )}
       </form>
     </div>

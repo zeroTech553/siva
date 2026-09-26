@@ -4,7 +4,7 @@
 // permission mode, plus new-chat and reset-pairing actions.
 
 import type { AgentConsole } from '@/components/agent/use-agent-console'
-import { Win95Button } from '@/components/os/win95'
+import { OsButton } from '@/components/computer/os/os-ui'
 import { PERMISSION_MODES, pingProviders, providerLabel } from '@/lib/shared/daemon'
 
 export function ControlPanel({
@@ -59,8 +59,8 @@ export function ControlPanel({
       </label>
       {agent.cliMessage ? <p>{agent.cliMessage}</p> : null}
       <div className="os-actions">
-        <Win95Button onClick={agent.startNewChat}>New chat</Win95Button>
-        <Win95Button onClick={onResetPairing}>Reset pairing</Win95Button>
+        <OsButton onClick={agent.startNewChat}>New chat</OsButton>
+        <OsButton onClick={onResetPairing}>Reset pairing</OsButton>
       </div>
     </div>
   )

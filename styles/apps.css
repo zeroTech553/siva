@@ -1,199 +1,834 @@
-/* styles/apps.css — the apps that run inside an OS window: pairing, agent console,
-   terminal, CD player, control panel. Owned by components/{pairing,agent,terminal,console}/*. */
+/* styles/apps.css — the apps that run INSIDE an OS window: pairing, the CLI
+   selector, the prompt composer, both terminals, the agent console, the CD
+   player and the file browser.
 
+   Owned by components/{pairing,cli,agent,terminal,console,files}/*.
+   The window frame, taskbar and desktop live in styles/os.css; the machine that
+   contains all of it lives in styles/computer.css; the page around the machine
+   lives in styles/landing.css. Colours and fonts come from styles/tokens.css.
 
+   Inside a CRT the whole UI is small, so every size here is in px (9–13), and
+   every surface is a flat fill with a 2px ink edge. Selected states use the
+   very light cyan (--zero-cyan-1/2), never a gradient and never a shadow-blur. */
 
-.cli-icon-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 6px;
-  padding: 8px;
-}
+/* ── 1. shared pane + action row ─────────────────────────────────────────── */
 
-.cli-icon {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 4px;
-  border: 2px solid transparent;
-  padding: 6px 4px;
-  font-size: 10px;
-  font-weight: 700;
-}
-
-.cli-icon-selected {
-  border-color: var(--primary);
-  background: var(--card);
-  box-shadow: 2px 2px 0 var(--border);
-}
-
-.cli-icon img {
-  width: 24px;
-  height: 24px;
-  object-fit: contain;
-}
-
-.pair-pane {
+.os-pane {
   display: flex;
   min-height: 0;
   flex: 1;
   flex-direction: column;
-  gap: 6px;
+  gap: 7px;
   overflow: auto;
   padding: 8px;
+  background: var(--zero-paper);
+  color: var(--zero-ink);
+  font-size: 11px;
+  line-height: 1.5;
 }
 
-.pair-kicker {
-  font-size: 9px;
-  font-weight: 700;
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
-}
-
-.pair-code {
+.os-pane select,
+.os-pane input,
+.os-pane textarea,
+.cd-player select {
+  width: 100%;
+  border: var(--zero-edge);
+  background: #ffffff;
+  padding: 5px 6px;
+  color: var(--zero-ink);
   font-family: var(--font-mono), ui-monospace, monospace;
-  font-size: 18px;
-  letter-spacing: 0.1em;
+  font-size: 11px;
 }
 
-.pair-command {
-  max-height: 72px;
-  overflow: auto;
-  border: 2px solid var(--border);
-  background: #071e28;
-  color: var(--card);
-  padding: 6px;
-  font-size: 9px;
-  line-height: 1.4;
-  white-space: pre-wrap;
-}
-
-.pair-actions,
-.cd-actions,
 .os-actions {
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
 }
 
-.cd-player,
-.os-pane {
+.about-title {
+  margin: 0;
+  font-family: var(--font-os), ui-monospace, monospace;
+  font-size: 13px;
+  letter-spacing: 0.04em;
+}
+
+.about-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 10px;
+  line-height: 1.45;
+}
+
+.about-list strong {
+  display: block;
+  font-family: var(--font-os), ui-monospace, monospace;
+  font-size: 10px;
+  letter-spacing: 0.02em;
+}
+
+.hero-agent-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border-bottom: var(--zero-edge);
+  padding-bottom: 6px;
+}
+
+.hero-agent-head strong {
+  display: block;
+  font-family: var(--font-os), ui-monospace, monospace;
+  font-size: 11px;
+}
+
+.hero-agent-head img {
+  image-rendering: pixelated;
+}
+
+/* ── 2. pairing ─────────────────────────────────────────────────────────── */
+
+.pair-pane {
   display: flex;
   min-height: 0;
   flex: 1;
   flex-direction: column;
   gap: 8px;
   overflow: auto;
-  padding: 8px;
+  padding: 9px;
+  background: var(--zero-paper);
+  color: var(--zero-ink);
   font-size: 11px;
 }
 
-.cd-disc {
-  border: 2px solid var(--border);
-  background: #071e28;
-  color: var(--card);
-  padding: 8px;
-  font-family: var(--font-mono), ui-monospace, monospace;
-}
-
-.cd-player select,
-.os-pane select,
-.os-pane input,
-.forge-prompt textarea {
-  width: 100%;
-  border: 2px solid var(--border);
-  background: var(--card);
-  padding: 6px;
-  color: var(--foreground);
-}
-
-.forge-work-log {
-  min-height: 0;
-  flex: 1;
-  overflow: auto;
-  background: var(--card);
-}
-
-.forge-prompt {
+.pair-head {
   display: flex;
-  gap: 6px;
-  border-top: 2px solid var(--border);
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.pair-code-block {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.pair-kicker {
+  font-family: var(--font-os), ui-monospace, monospace;
+  font-size: 8px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--zero-ink-soft);
+}
+
+.pair-code {
+  border: var(--zero-edge);
+  background: var(--zero-cyan-1);
+  padding: 4px 8px;
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 19px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+}
+
+.pair-pane-compact .pair-code {
+  font-size: 15px;
+  padding: 3px 6px;
+}
+
+.pair-command-block {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.pair-command,
+.prompt-command {
+  max-height: 84px;
+  overflow: auto;
+  margin: 0;
+  border: var(--zero-edge);
+  background: var(--zero-glass);
+  color: var(--zero-phosphor);
   padding: 6px;
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 10px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  word-break: break-all;
 }
 
-.forge-prompt textarea {
-  min-height: 48px;
-  resize: none;
+.pair-error {
+  margin: 0;
+  border-left: 4px solid var(--zero-bad);
+  background: #fbeeea;
+  padding: 5px 7px;
+  color: var(--zero-bad);
+  font-size: 10px;
 }
 
-.forge-ask {
-  margin: 6px;
-  border: 2px solid var(--border);
-  background: var(--card);
-  padding: 8px;
-  box-shadow: 2px 2px 0 var(--border);
-}
-
-.forge-ask div {
+.pair-actions {
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
 }
 
-.forge-work-error {
-  padding: 4px 8px;
+/* The platform switch above the panel on the landing page. */
+.pair-platform {
+  display: flex;
+  gap: 0;
+  margin-bottom: 8px;
+}
+
+.pair-platform-tab {
+  flex: 1;
+  border: var(--zero-edge);
+  border-right-width: 0;
+  background: var(--zero-plastic);
+  padding: 6px 10px;
+  color: var(--zero-ink-soft);
+  font-family: var(--font-os), ui-monospace, monospace;
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+}
+
+.pair-platform-tab:last-child {
+  border-right-width: 2px;
+}
+
+.pair-platform-tab[aria-selected='true'] {
+  background: var(--zero-cyan-2);
+  color: var(--zero-ink);
+  box-shadow: inset 0 -3px 0 var(--zero-cyan-5);
+}
+
+/* ── 3. the CLI selector (cli-picker / model-picker / flag-panel / preview) ─ */
+
+.cli-picker {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.cli-picker-label,
+.cli-field-label {
+  font-family: var(--font-os), ui-monospace, monospace;
+  font-size: 9px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--zero-ink-soft);
+}
+
+.cli-picker-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(112px, 1fr));
+  gap: 6px;
+}
+
+.cli-chip {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  position: relative;
+  border: var(--zero-edge);
+  background: var(--zero-paper);
+  padding: 7px 8px;
+  text-align: left;
+  cursor: pointer;
+  transition: background 90ms linear;
+}
+
+.cli-chip:hover {
+  background: var(--zero-cyan-1);
+}
+
+.cli-chip-on {
+  background: var(--zero-cyan-2);
+  box-shadow: 3px 3px 0 var(--zero-cyan-5);
+}
+
+.cli-chip-logo {
+  image-rendering: pixelated;
+}
+
+.cli-chip-name {
+  font-family: var(--font-os), ui-monospace, monospace;
+  font-size: 10px;
+  letter-spacing: 0.02em;
+}
+
+.cli-chip-bin {
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 9px;
+  color: var(--zero-ink-faint);
+}
+
+.cli-chip-tick {
+  position: absolute;
+  top: 4px;
+  right: 6px;
+  color: var(--zero-cyan-5);
+  font-size: 8px;
+}
+
+.cli-picker-compact .cli-picker-row {
+  grid-template-columns: repeat(auto-fit, minmax(92px, 1fr));
+}
+
+.cli-picker-compact .cli-chip {
+  padding: 5px 6px;
+}
+
+.cli-model {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.cli-field {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.cli-select,
+.cli-input {
+  width: 100%;
+  border: var(--zero-edge);
+  background: #ffffff;
+  padding: 5px 6px;
+  color: var(--zero-ink);
+  font-family: var(--font-mono), ui-monospace, monospace;
   font-size: 11px;
 }
 
-/* Machine terminal — the real PTY streamed from the paired laptop.
-   xterm.js draws the screen; these rules only frame it. */
+.cli-hint {
+  margin: 0;
+  font-size: 10px;
+  color: var(--zero-ink-soft);
+  line-height: 1.5;
+}
+
+.cli-flags {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  border-top: 2px solid var(--zero-plastic-2);
+  padding-top: 8px;
+}
+
+.cli-flags-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.cli-flags-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.cli-flag {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  border: 2px solid var(--zero-plastic-2);
+  background: var(--zero-paper);
+  padding: 6px 8px;
+}
+
+.cli-flag-on {
+  border-color: var(--zero-ink);
+  background: var(--zero-cyan-1);
+}
+
+.cli-flag-risky.cli-flag-on {
+  background: #fdf3e3;
+  border-color: var(--zero-warn);
+}
+
+.cli-flag-research {
+  cursor: pointer;
+}
+
+.cli-flag-main {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  flex: 1;
+  cursor: pointer;
+}
+
+.cli-flag-box {
+  flex: none;
+  width: 14px;
+  height: 14px;
+  display: grid;
+  place-items: center;
+  border: var(--zero-edge);
+  background: #ffffff;
+  color: var(--zero-cyan-5);
+  font-size: 10px;
+  line-height: 1;
+}
+
+.cli-flag-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.cli-flag-name {
+  font-family: var(--font-os), ui-monospace, monospace;
+  font-size: 10px;
+  letter-spacing: 0.02em;
+}
+
+.cli-flag-name em {
+  margin-left: 5px;
+  border: 1px solid var(--zero-warn);
+  background: #fdf3e3;
+  padding: 0 3px;
+  color: #8a6312;
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 8px;
+  font-style: normal;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.cli-flag-hint {
+  font-size: 10px;
+  color: var(--zero-ink-soft);
+  line-height: 1.45;
+}
+
+.cli-flag-argv {
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 9px;
+  color: var(--zero-cyan-5);
+  word-break: break-all;
+}
+
+.cli-flag-choices {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.cli-choice {
+  border: 2px solid var(--zero-plastic-2);
+  background: var(--zero-paper);
+  padding: 3px 7px;
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 9px;
+  cursor: pointer;
+}
+
+.cli-choice-on {
+  border-color: var(--zero-ink);
+  background: var(--zero-cyan-2);
+  font-weight: 700;
+}
+
+.cli-flag-input {
+  max-width: 320px;
+}
+
+.cli-command {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  border-top: 2px solid var(--zero-plastic-2);
+  padding-top: 8px;
+}
+
+.cli-command-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.cli-command-tabs {
+  display: flex;
+  gap: 4px;
+}
+
+.cli-tab {
+  border: 2px solid var(--zero-plastic-2);
+  background: var(--zero-paper);
+  padding: 2px 7px;
+  font-family: var(--font-os), ui-monospace, monospace;
+  font-size: 8px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.cli-tab-on {
+  border-color: var(--zero-ink);
+  background: var(--zero-cyan-2);
+}
+
+.cli-command-body {
+  margin: 0;
+  border: var(--zero-edge);
+  background: var(--zero-glass);
+  color: var(--zero-phosphor);
+  padding: 8px;
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 11px;
+  line-height: 1.55;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.cli-explain {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 9px;
+  color: var(--zero-ink-soft);
+  line-height: 1.5;
+}
+
+/* ── 4. prompt composer ─────────────────────────────────────────────────── */
+
+.prompt-composer {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+}
+
+.prompt-pickers {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+@media (min-width: 720px) {
+  .prompt-pickers {
+    display: grid;
+    grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr);
+    align-items: start;
+  }
+  .prompt-research {
+    grid-column: 1 / -1;
+  }
+}
+
+.prompt-research {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  border: var(--zero-edge);
+  background: var(--zero-paper);
+  padding: 7px 9px;
+  cursor: pointer;
+}
+
+.prompt-research:has(input:checked) {
+  background: var(--zero-cyan-1);
+  box-shadow: 3px 3px 0 var(--zero-cyan-5);
+}
+
+.prompt-research input {
+  margin-top: 3px;
+  accent-color: var(--zero-cyan-5);
+}
+
+.prompt-research img {
+  image-rendering: pixelated;
+}
+
+.prompt-research span {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  font-family: var(--font-os), ui-monospace, monospace;
+  font-size: 10px;
+}
+
+.prompt-research .zos-note {
+  font-family: var(--font-sans), Arial, sans-serif;
+}
+
+.prompt-text {
+  width: 100%;
+  border: var(--zero-edge);
+  background: #ffffff;
+  padding: 9px;
+  color: var(--zero-ink);
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 12px;
+  line-height: 1.55;
+  resize: vertical;
+}
+
+.prompt-text:focus-visible {
+  outline: 3px solid var(--zero-cyan-3);
+  outline-offset: 1px;
+}
+
+.prompt-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+
+.prompt-chip {
+  max-width: 100%;
+  overflow: hidden;
+  border: 2px dashed var(--zero-plastic-3);
+  background: transparent;
+  padding: 3px 8px;
+  color: var(--zero-ink-soft);
+  font-size: 10px;
+  text-align: left;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.prompt-chip:hover {
+  border-style: solid;
+  border-color: var(--zero-cyan-5);
+  background: var(--zero-cyan-1);
+  color: var(--zero-ink);
+}
+
+.prompt-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}
+
+.prompt-cwd {
+  flex: 1 1 220px;
+  min-width: 0;
+  border: var(--zero-edge);
+  background: #ffffff;
+  padding: 6px;
+  color: var(--zero-ink);
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 10px;
+}
+
+.prompt-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  align-items: center;
+  margin: 0;
+  font-size: 10px;
+  color: var(--zero-ink-soft);
+}
+
+.prompt-notice {
+  margin: 0;
+  border-left: 4px solid var(--zero-cyan-4);
+  background: var(--zero-cyan-1);
+  padding: 6px 8px;
+  font-size: 11px;
+}
+
+.prompt-notice-bad {
+  border-left-color: var(--zero-bad);
+  background: #fbeeea;
+  color: var(--zero-bad);
+}
+
+.prompt-need-machine {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  border: var(--zero-edge);
+  background: var(--zero-paper-2);
+  padding: 10px;
+}
+
+.prompt-need-machine strong {
+  font-family: var(--font-os), ui-monospace, monospace;
+  font-size: 11px;
+}
+
+.prompt-result {
+  display: flex;
+  flex-direction: column;
+  border: var(--zero-edge);
+  background: #ffffff;
+}
+
+.prompt-result-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  border-bottom: var(--zero-edge);
+  background: var(--zero-plastic);
+  padding: 5px 8px;
+  font-family: var(--font-os), ui-monospace, monospace;
+  font-size: 10px;
+}
+
+.prompt-result-body {
+  display: flex;
+  min-height: 120px;
+  max-height: 340px;
+  flex-direction: column;
+  overflow: auto;
+}
+
+.prompt-ask {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  justify-content: space-between;
+  border-top: var(--zero-edge);
+  background: #fdf3e3;
+  padding: 7px 8px;
+  font-size: 11px;
+}
+
+/* ── 5. demo terminal (the shell that runs in the browser) ──────────────── */
+
+.demo-term {
+  display: flex;
+  min-height: 0;
+  flex: 1;
+  flex-direction: column;
+  background: var(--zero-glass);
+  color: var(--zero-phosphor);
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 11px;
+  line-height: 1.5;
+  cursor: text;
+}
+
+.demo-term-scroll {
+  min-height: 0;
+  flex: 1;
+  overflow: auto;
+  padding: 7px 8px 2px;
+}
+
+.demo-term-line {
+  margin: 0;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.demo-term-in {
+  color: #ffffff;
+}
+
+.demo-term-out {
+  color: var(--zero-phosphor);
+}
+
+.demo-term-err {
+  color: #f2a08d;
+}
+
+.demo-term-dim {
+  color: var(--zero-phosphor-dim);
+}
+
+.demo-term-input-row {
+  display: flex;
+  gap: 6px;
+  align-items: baseline;
+  padding: 2px 8px 8px;
+}
+
+.demo-term-prompt {
+  flex: none;
+  color: var(--zero-cyan-3);
+}
+
+.demo-term-input {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  background: transparent;
+  padding: 0;
+  color: #ffffff;
+  font: inherit;
+  caret-color: var(--zero-phosphor);
+}
+
+.demo-term-input:focus {
+  outline: none;
+}
+
+/* ── 6. machine terminal (the real PTY; xterm.js draws the screen) ──────── */
 
 .machine-term {
   display: flex;
   min-height: 0;
   flex: 1;
   flex-direction: column;
-  background: #071e28;
+  background: var(--zero-glass);
 }
 
 .machine-term-bar {
   display: flex;
   align-items: center;
   gap: 6px;
-  background: var(--primary);
-  color: var(--primary-foreground);
-  padding: 4px 6px;
-  font-size: 10px;
+  background: var(--zero-cyan-5);
+  color: #ffffff;
+  padding: 4px 7px;
+  font-family: var(--font-os), ui-monospace, monospace;
+  font-size: 9px;
+  letter-spacing: 0.04em;
 }
 
 .machine-term-title {
   overflow: hidden;
+  margin-left: auto;
   text-overflow: ellipsis;
   white-space: nowrap;
-  margin-left: auto;
   opacity: 0.85;
 }
 
 .machine-term-dot {
   width: 8px;
   height: 8px;
-  border-radius: 50%;
-  background: #888;
+  flex: none;
+  border: 1px solid rgb(4 22 28 / 45%);
+  background: var(--zero-plastic-3);
 }
 
 .machine-term-dot--ready {
-  background: #58d858;
+  background: var(--zero-cyan-3);
 }
 
 .machine-term-dot--connecting,
 .machine-term-dot--reconnecting {
-  background: #e8c34a;
+  background: var(--zero-warn);
   animation: pixel-blink 1.2s ease-in-out infinite;
 }
 
 .machine-term-dot--offline,
 .machine-term-dot--closed {
-  background: #d85858;
+  background: var(--zero-bad);
 }
 
 .machine-term-screen {
@@ -206,22 +841,105 @@
   height: 100%;
 }
 
-/* File browser — live listing of the paired machine's disk. */
+/* ── 7. agent console ───────────────────────────────────────────────────── */
+
+.forge-work-log {
+  min-height: 0;
+  flex: 1;
+  overflow: auto;
+  background: #ffffff;
+}
+
+.forge-prompt {
+  display: flex;
+  gap: 6px;
+  border-top: var(--zero-edge);
+  background: var(--zero-paper);
+  padding: 6px;
+}
+
+.forge-prompt textarea {
+  min-height: 48px;
+  width: 100%;
+  border: var(--zero-edge);
+  background: #ffffff;
+  padding: 6px;
+  color: var(--zero-ink);
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 11px;
+  resize: none;
+}
+
+.forge-ask {
+  margin: 6px;
+  border: var(--zero-edge);
+  background: #fdf3e3;
+  padding: 8px;
+  box-shadow: 3px 3px 0 var(--zero-warn);
+  font-size: 11px;
+}
+
+.forge-ask div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 6px;
+}
+
+.forge-work-error {
+  padding: 4px 8px;
+  color: var(--zero-bad);
+  font-size: 11px;
+}
+
+/* ── 8. CD player ───────────────────────────────────────────────────────── */
+
+.cd-player {
+  display: flex;
+  min-height: 0;
+  flex: 1;
+  flex-direction: column;
+  gap: 8px;
+  overflow: auto;
+  padding: 8px;
+  background: var(--zero-paper);
+  font-size: 11px;
+}
+
+.cd-disc {
+  margin: 0;
+  border: var(--zero-edge);
+  background: var(--zero-glass);
+  color: var(--zero-phosphor);
+  padding: 8px;
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 11px;
+  letter-spacing: 0.06em;
+}
+
+.cd-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+/* ── 9. file browser ────────────────────────────────────────────────────── */
 
 .file-browser {
   display: flex;
   min-height: 0;
   flex: 1;
   flex-direction: column;
-  background: var(--card);
-  color: var(--card-foreground);
+  background: #ffffff;
+  color: var(--zero-ink);
 }
 
 .file-browser-bar {
   display: flex;
   align-items: center;
   gap: 6px;
-  border-bottom: 2px solid var(--border);
+  border-bottom: var(--zero-edge);
+  background: var(--zero-paper);
   padding: 4px 6px;
 }
 
@@ -229,7 +947,7 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-family: var(--font-ibm), ui-monospace, monospace;
+  font-family: var(--font-mono), ui-monospace, monospace;
   font-size: 10px;
   direction: rtl; /* keep the tail (deepest folder) visible when clipped */
   text-align: left;
@@ -237,14 +955,14 @@
 
 .file-browser-error {
   padding: 6px 8px;
+  color: var(--zero-bad);
   font-size: 11px;
-  color: var(--destructive);
 }
 
 .file-browser-note {
   padding: 6px 8px;
-  font-size: 11px;
   opacity: 0.75;
+  font-size: 11px;
   list-style: none;
 }
 
@@ -264,17 +982,16 @@
   gap: 6px;
   border: 0;
   background: transparent;
-  color: inherit;
   padding: 3px 8px;
-  font-family: var(--font-ibm), ui-monospace, monospace;
+  color: inherit;
+  font-family: var(--font-mono), ui-monospace, monospace;
   font-size: 11px;
   text-align: left;
   cursor: pointer;
 }
 
 .file-browser-entry:hover {
-  background: var(--primary);
-  color: var(--primary-foreground);
+  background: var(--zero-cyan-2);
 }
 
 .file-browser-entry--dir .file-browser-name {
@@ -283,6 +1000,7 @@
 
 .file-browser-glyph {
   width: 10px;
+  color: var(--zero-cyan-5);
 }
 
 .file-browser-name {
@@ -302,7 +1020,7 @@
   overflow: auto;
   margin: 0;
   padding: 6px 8px;
-  font-family: var(--font-ibm), ui-monospace, monospace;
+  font-family: var(--font-mono), ui-monospace, monospace;
   font-size: 11px;
   line-height: 1.5;
   white-space: pre;
@@ -315,4 +1033,40 @@
   text-align: right;
   opacity: 0.4;
   user-select: none;
+}
+
+/* ── 10. console page shell ─────────────────────────────────────────────── */
+
+.console-page {
+  display: flex;
+  min-height: 100svh;
+  align-items: center;
+  justify-content: center;
+  padding: 12px;
+  background: var(--zero-pegboard);
+}
+
+.console-prompt {
+  display: flex;
+  min-height: 0;
+  flex: 1;
+  flex-direction: column;
+  gap: 8px;
+  overflow: auto;
+  padding: 8px;
+  background: var(--zero-paper);
+}
+
+.zos-desktop-connecting {
+  display: grid;
+  place-items: center;
+  height: 100%;
+}
+
+.zos-connecting-line {
+  margin: 0;
+  color: var(--zero-phosphor);
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 12px;
+  animation: pixel-blink 1.4s ease-in-out infinite;
 }

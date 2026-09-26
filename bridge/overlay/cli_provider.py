@@ -107,6 +107,7 @@ class GenericRunner:
             session_id=getattr(job, "session_id", "") or "",
             permission_mode=mode,
             flavor=self.name,
+            model=getattr(job, "model", "") or "",
         )
         env = dict(os.environ)
         extra = getattr(self.config, self.name + "_env", None) or {}
