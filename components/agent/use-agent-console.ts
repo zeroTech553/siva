@@ -9,7 +9,10 @@ import { useEffect, useRef, useState } from 'react'
 
 import { DeviceRpcError, deviceRpc } from '@/lib/client/device-rpc'
 import { readConsolePrefs, writeConsolePrefs } from '@/lib/client/forge-session'
-import { playError } from '@/lib/client/desk-sound'
+import { startPolitePolling } from '@/lib/client/polite-polling'
+import { playError } from '@/lib/client/zero-sound'
+import { cliProfile } from '@/lib/shared/cli-flags'
+import { JOB_POLL_SCHEDULE } from '@/lib/shared/poll-schedule'
 import {
   cliSetupMessage,
   jobIsActive,
@@ -17,6 +20,7 @@ import {
   pickReadyProvider,
   providerLabel,
   readyProviders,
+  wirePermissionMode,
   type DaemonQuestion,
   type JobEvent,
   type JobSnapshot,
@@ -52,6 +56,10 @@ export function useAgentConsole({
   const [error, setError] = useState('')
   const [answering, setAnswering] = useState(false)
   const seqRef = useRef(0)
+  // The job poll writes prefs, but must not restart when cwd/provider change
+  // (restarting would lose the event cursor), so it reads them from a ref.
+  const prefsRef = useRef({ cwd: '', provider: '' })
+  prefsRef.current = { cwd, provider }
 
   // Restore saved preferences once.
   useEffect(() => {
@@ -98,48 +106,54 @@ export function useAgentConsole({
     }
   }, [daemonOnline, deviceId, phoneSecret])
 
-  // Poll the running job for events and pending prompts.
+  // Stream the running job. This used to be a 250ms setInterval — four
+  // serverless invocations a second, running even with the tab in the
+  // background. It now goes through startPolitePolling: adaptive backoff while
+  // the CLI is thinking, zero requests while hidden, an immediate tick on
+  // refocus, and no overlapping requests.
   useEffect(() => {
     if (!deviceId || !phoneSecret || !jobId) return
-    let cancelled = false
-    let timer = 0
-    const stop = () => {
-      cancelled = true
-      window.clearInterval(timer)
-    }
-    const tick = async () => {
-      try {
-        const snapshot = await deviceRpc<JobSnapshot>(
+    const poll = startPolitePolling<JobSnapshot>({
+      name: `job ${jobId}`,
+      schedule: JOB_POLL_SCHEDULE,
+      run: () =>
+        deviceRpc<JobSnapshot>(
           deviceId,
           phoneSecret,
           `/api/jobs/${encodeURIComponent(jobId)}?since=${seqRef.current}`,
-        )
-        if (cancelled) return
+        ),
+      // A change is "more events" or "different status"; otherwise back off.
+      changed: (previous, next) =>
+        !previous ||
+        (previous.next_seq ?? 0) !== (next.next_seq ?? 0) ||
+        previous.status !== next.status ||
+        Boolean(next.pending_permission) !== Boolean(previous.pending_permission) ||
+        Boolean(next.pending_question) !== Boolean(previous.pending_question),
+      onValue: (snapshot) => {
         if (snapshot.events?.length) {
           setEvents((current) => mergeEvents(current, snapshot.events))
         }
         seqRef.current = snapshot.next_seq ?? seqRef.current
         setJob(snapshot)
         const nextSessionId = snapshot.new_session_id || snapshot.session_id
-        if (nextSessionId) {
+        // Remembering a session the CLI cannot resume would make the next
+        // prompt look like a continuation that never happens.
+        if (nextSessionId && cliProfile(prefsRef.current.provider).canResume) {
           setSessionId(nextSessionId)
-          writeConsolePrefs({ cwd, provider, sessionId: nextSessionId })
+          writeConsolePrefs({ cwd: prefsRef.current.cwd, provider: prefsRef.current.provider, sessionId: nextSessionId })
         }
         if (!jobIsActive(snapshot.status)) {
           if (snapshot.error) setError(snapshot.error)
-          stop()
+          poll.stop() // job finished: stop spending invocations
         }
-      } catch (cause) {
-        if (!cancelled) {
-          setError(cause instanceof DeviceRpcError ? cause.message : 'Job status is unavailable.')
-          if (cause instanceof DeviceRpcError && cause.status === 404) stop()
-        }
-      }
-    }
-    timer = window.setInterval(() => void tick(), 250)
-    void tick()
-    return stop
-  }, [cwd, deviceId, jobId, phoneSecret, provider])
+      },
+      onError: (cause) => {
+        setError(cause instanceof DeviceRpcError ? cause.message : 'Job status is unavailable.')
+        if (cause instanceof DeviceRpcError && cause.status === 404) poll.stop()
+      },
+    })
+    return () => poll.stop()
+  }, [deviceId, jobId, phoneSecret])
 
   function updateCwd(next: string) {
     setCwd(next)
@@ -162,8 +176,27 @@ export function useAgentConsole({
     writeConsolePrefs({ cwd, provider, sessionId: '' })
   }
 
-  async function sendPrompt() {
-    const text = prompt.trim()
+  /**
+   * Send one turn to the laptop.
+   *
+   * `overrides` exists for callers that build a prompt somewhere else (the
+   * landing page's "Send a prompt" section): React state updates are async, so
+   * a caller that just did setCwd()/setPermissionMode() would otherwise send
+   * the previous values. Pass what you mean, explicitly.
+   */
+  async function sendPrompt(overrides?: {
+    text?: string
+    cwd?: string
+    permissionMode?: string
+    provider?: string
+    /**
+     * The model the visitor picked (lib/client/use-cli-selection.ts). The daemon
+     * accepts it on both job routes and hands it to the CLI (`--model` / `-m`);
+     * without it every job ran the CLI's own default, whatever the picker said.
+     */
+    model?: string
+  }) {
+    const text = (overrides?.text ?? prompt).trim()
     if (!text || sending || !deviceId || !phoneSecret) return
     if (!online) {
       setError('Laptop is offline. Keep the Forge bridge running on that machine.')
@@ -173,7 +206,7 @@ export function useAgentConsole({
       setError('The laptop is online, but the local agent daemon did not answer. Re-run the install command so the daemon and bridge restart.')
       return
     }
-    const workingDir = cwd.trim()
+    const workingDir = (overrides?.cwd ?? cwd).trim()
     if (!workingDir) {
       setError('The laptop home directory is not available yet. Wait for Daemon ready, then send again.')
       return
@@ -189,30 +222,40 @@ export function useAgentConsole({
       } catch {
         // Use the last ping if a fresh scan fails.
       }
+      const requested = overrides?.provider || provider
       const candidates = readyProviders(nextPing)
-      const selected = provider && candidates.includes(provider) ? provider : pickReadyProvider(nextPing)
+      const selected = requested && candidates.includes(requested) ? requested : pickReadyProvider(nextPing)
       const queue = selected ? [selected, ...candidates.filter((name) => name !== selected)] : candidates
       if (!queue.length) {
         setError('No coding CLI is available on this laptop yet. Re-run pairing and pick a CLI.')
         return
       }
       setCliMessage(cliSetupMessage(nextPing, queue[0]))
-      const mode = permissionMode || 'bypassPermissions'
+      // 'default' on the wire, never '': an empty mode means "use this laptop's
+      // config default" to the daemon, which is not what the visitor picked.
+      const mode = wirePermissionMode(overrides?.permissionMode || permissionMode)
+      // Sent on every attempt: the model belongs to the CLI the visitor picked,
+      // and the fallback loop below may land on a different one, whose own
+      // default is then the honest answer (an unknown id is ignored upstream).
+      const model = (overrides?.model || '').trim()
       let lastError = ''
       for (const name of queue) {
         try {
           let result: { job_id?: string }
-          if (sessionId && name === selected) {
+          // Only a CLI that can actually resume gets the /continue route: for
+          // copilot and antigravity the daemon would drop the session id and
+          // silently start a new conversation.
+          if (sessionId && name === selected && cliProfile(name).canResume) {
             result = await deviceRpc<{ job_id?: string }>(
               deviceId,
               phoneSecret,
               `/api/sessions/${encodeURIComponent(sessionId)}/continue`,
-              { method: 'POST', body: JSON.stringify({ prompt: text, permission_mode: mode }) },
+              { method: 'POST', body: JSON.stringify({ prompt: text, permission_mode: mode, model }) },
             )
           } else {
             result = await deviceRpc<{ job_id?: string }>(deviceId, phoneSecret, '/api/sessions/new', {
               method: 'POST',
-              body: JSON.stringify({ prompt: text, cwd: workingDir, permission_mode: mode, provider: name }),
+              body: JSON.stringify({ prompt: text, cwd: workingDir, permission_mode: mode, provider: name, model }),
             })
           }
           if (!result.job_id) throw new Error('The daemon did not return a job id.')

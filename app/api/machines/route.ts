@@ -10,6 +10,12 @@ import { json, readJson } from '@/lib/server/http'
 import { requireSameOrigin } from '@/lib/server/relay'
 import { currentUser, supabaseServer } from '@/lib/supabase/server'
 
+// Vercel: a hard ceiling on this function's wall time. Everything in this file
+// is one short round-trip (relay, database, or a rendered string), so 60s is a
+// cap that should never be approached — it exists to stop a hung upstream from
+// billing a full timeout.
+export const maxDuration = 60
+
 export async function GET() {
   const supabase = await supabaseServer()
   if (!supabase) return json({ error: 'Accounts are not configured', code: 'NO_SUPABASE' }, 503)

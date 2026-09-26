@@ -1,0 +1,80 @@
+#!/bin/sh
+# A stand-in coding agent CLI, used by tests/fixtures/stub_daemon.py.
+#
+# It behaves like the real thing in the two ways the product depends on:
+#
+#   1. `--help` prints the flags that bridge/overlay/cli_launch.py detects, so
+#      the daemon builds the same argv it would build for a real Claude Code.
+#   2. A normal run prints the stream-json lines the overlay parses
+#      (init / assistant text / tool_use / result), so the job events that reach
+#      the browser come out of the real parser, not a fixture.
+#
+# It also records exactly what it was exec'd with, one JSON object per line, in
+# $FAKE_CLI_LOG — that is how the tests prove the laptop ran the command the
+# browser previewed.
+
+if [ "$1" = "--help" ] || [ "$1" = "-h" ]; then
+  cat <<'HELP'
+Usage: fake-cli [options] [prompt]
+
+Options:
+  -p, --print                     Print response and exit (non-interactive)
+      --output-format <format>    Output format: text, json, stream-json
+      --stream-partial-output     Stream partial assistant messages
+      --input-format <format>     Input format
+      --model <model>             Model to use
+      --permission-mode <mode>    Bypass or require permission prompts
+      --dangerously-skip-permissions
+                                  Skip all permission prompts
+      --add-dir <dir>             Additional working directories
+      --resume <session_id>       Resume a previous session
+      --allowedTools <tools>      Tools the agent may use
+  -h, --help                      Show this help
+HELP
+  exit 0
+fi
+
+# -- record argv -----------------------------------------------------------
+if [ -n "$FAKE_CLI_LOG" ]; then
+  {
+    printf 'ARGS='
+    for arg in "$@"; do printf '[%s]' "$arg"; done
+    printf '\n'
+  } >>"$FAKE_CLI_LOG" 2>/dev/null || true
+  printf 'CWD=%s\n' "$(pwd)" >>"$FAKE_CLI_LOG" 2>/dev/null || true
+fi
+
+# -- decide which flags we were given --------------------------------------
+STREAM=0
+SESSION=""
+for arg in "$@"; do
+  case "$arg" in
+    stream-json) STREAM=1 ;;
+  esac
+done
+# the value after --resume, if present
+prev=""
+for arg in "$@"; do
+  if [ "$prev" = "--resume" ]; then SESSION="$arg"; fi
+  prev="$arg"
+done
+if [ -z "$SESSION" ]; then SESSION="fake-$(date +%s)-$$"; fi
+
+# the prompt is always the final argument
+for arg in "$@"; do PROMPT="$arg"; done
+
+# -- emit a stream-json session, exactly like the real CLI -----------------
+if [ "$STREAM" = "1" ]; then
+  printf '{"type":"system","subtype":"init","session_id":"%s","model":"fake-model-1"}\n' "$SESSION"
+  printf '{"type":"assistant","message":{"content":[{"type":"text","text":"Reading the project and planning the change."}]}}\n'
+  printf '{"type":"assistant","message":{"content":[{"type":"tool_use","name":"Read","input":{"path":"src/retry.py"}}]}}\n'
+  printf '{"type":"assistant","message":{"content":[{"type":"text","text":"Fixed the swallowed timeout and re-raised it."}]}}\n'
+  printf '{"type":"result","subtype":"success","result":"Done. 48 tests passed.","session_id":"%s"}\n' "$SESSION"
+else
+  printf 'Reading the project and planning the change.\n'
+  printf 'Done. 48 tests passed.\n'
+fi
+
+# Proof for the test that the prompt survived the whole pipe untouched.
+printf 'FAKE_CLI_RECEIVED_PROMPT: %s\n' "$PROMPT"
+exit 0

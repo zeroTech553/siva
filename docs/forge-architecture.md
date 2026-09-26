@@ -1,129 +1,134 @@
 # Forge architecture
 
-Product: user opens the website (no signup), runs one command on the laptop,
-controls that laptop's Claude/Codex/Grok sessions from the phone. Forever.
+What exists today, in one file. Read this before changing anything; update it
+when you do.
+
+**One sentence:** a browser drives the coding CLIs on a laptop you own, through a
+relay the laptop dials out to, without opening a port.
+
+---
+
+## The four boundaries
 
 ```
-  Phone browser                    You operate                     User's laptop
- ┌──────────────┐              ┌─────────────────┐              ┌──────────────────┐
- │ Next.js app  │  HTTPS/WSS   │ CF Worker       │  outbound    │ forge-bridge     │
- │ Vercel       │─────────────▶│ + Durable Object│◀────WSS──────│ (device key, E2E)│
- │ pairing UI   │  ciphertext  │ per laptop      │  ciphertext  │        │         │
- │ dashboard    │              │ pairing rooms   │              │        ▼         │
- │ IndexedDB    │              │ offline queue   │              │ agentremoted     │
- └──────────────┘              └─────────────────┘              │ 127.0.0.1:8473   │
-                                                                │ tmux + claude…   │
-                                                                └──────────────────┘
+  your phone / any browser                                     the laptop you own
+┌─────────────────────────────┐                        ┌──────────────────────────────┐
+│ Next.js app (Vercel)        │                        │ forge-bridge.py              │
+│                             │   HTTPS + WSS          │   outbound WSS, nothing      │
+│  /            static CDN    │◀──────────────────────▶│   listening                  │
+│  /console     static CDN    │        relay           │        │                      │
+│  /api/pair*   functions     │                        │        │ HTTP + X-Auth-Token   │
+│  /d/[deviceId] proxy        │                        │        ▼  (injected)         │
+│                             │                        │ agentremoted (vendored)      │
+│ lib/shared/cli-flags.ts     │                        │   127.0.0.1:8473             │
+│   builds the command the    │                        │        │                      │
+│   visitor reads ────────────┼── argv parity ─────────┼────────▶ claude / codex /     │
+└─────────────────────────────┘                        │          cursor / opencode /  │
+                                                       │          copilot / antigravity│
+┌─────────────────────────────┐                        └──────────────────────────────┘
+│ relay (Worker / Node)       │
+│   pairing rooms, device     │   Optional, accounts only:
+│   rooms, terminal tickets   │   Supabase  ← machines table (RLS per user)
+└─────────────────────────────┘
 ```
 
-## Components
+**Why the laptop dials out.** The bridge opens the WebSocket and keeps it open.
+No inbound port, no port forwarding, no public IP, no VPN — it works behind any
+NAT, which is the whole product.
 
-### A. Website (this Next.js app, Vercel)
+**Why the relay is dumb.** Terminal bytes are encrypted in the browser and
+decrypted on the laptop (X25519 + AES-256-GCM, `bridge/forge_crypto.py`). The
+relay routes ciphertext and cannot read a keystroke. It is therefore safe to run
+one shared relay for everyone, which is what makes the free tier possible.
 
-- `/` landing: one sentence, one button "Connect a laptop"
-- `/pair` shows `XXXX-XXXX` + the exact command + 10-min countdown
-- `/app` dashboard after pairing (sessions, transcript, permissions, Live TUI)
-- No accounts. Device list lives in IndexedDB, encrypted with the pairing secret.
-- Never talks to the laptop directly. Only to `wss://relay.forge.dev`.
+---
 
-### B. Relay (Cloudflare Worker + Durable Objects) — separate small deploy
+## Boundary 1 — browser → app
 
-You (the operator) deploy this once. Users never touch it.
+| Path | Kind | Cost rule |
+| --- | --- | --- |
+| `/`, `/console` | `○ Static` | served by the CDN; never reads cookies, headers or searchParams |
+| `/api/pair`, `/api/pair/claim` | function | mints and claims a single-use code |
+| `/api/devices/[id]` | function | presence, terminal tickets, revoke |
+| `/d/[deviceId]/[...path]` | function | the only route that waits on a laptop (`maxDuration 300`) |
+| `/api/install/*`, `/api/bridge/*`, `/api/forge/*` | function | what the installer downloads |
+| `/api/machines*` | function | Supabase-backed; the only cookie consumer (`proxy.ts`) |
 
-| Object | Key | Job |
-|---|---|---|
-| `PairingRoom` | `sha256(code)` | 10-min TTL, two sockets (browser, bridge), ECDH handshake, then destroy |
-| `DeviceRoom` | `device_id` | Long-lived. Daemon socket + N browser sockets. Route encrypted frames. SQLite queue if daemon offline. |
+The browser polls through one loop: `lib/client/polite-polling.ts`. A hidden tab
+issues **zero** requests, an idle tab backs off, a refocus ticks immediately, and
+rounds never overlap. Schedules are pure maths in `lib/shared/poll-schedule.ts`,
+unit-tested against a requests-per-minute budget. There is no `setInterval` in
+any component — that is a rule, not a preference.
 
-Worker routes:
+## Boundary 2 — app → relay
 
-- `POST /v1/pair/create` → `{ code, expiresAt }` (rate-limited)
-- `GET /v1/pair/:code/wait` / `WSS /v1/pair/:code` → handshake
-- `WSS /v1/device/:id?role=daemon|browser` → persistent room
-- `GET /v1/version` → bridge auto-update
-- `POST /v1/abuse` → disable device_id
+`lib/server/relay.ts` is the only place that talks to the relay. It adds
+`x-forge-proxy-secret` (so only this deployment can mint pairing codes), blocks
+cross-origin writes (`requireSameOrigin`), and strips every request header except
+an allowlist. `lib/server/env.ts` is the only place that reads `process.env`.
 
-No Postgres required for v1. Pairing and queue live in DO storage.
-Add Neon later only if you want operator analytics or a recovery email.
+## Boundary 3 — relay → bridge → daemon
 
-### C. Laptop: unmodified daemon + forge-bridge
+`relay/PROTOCOL.md` is the frame reference; the Durable Object and the Node relay
+implement the same frames (and `tests/relay-room.test.mjs` holds them to it).
 
-Installer (`https://forge.dev/install`):
+Pairing is one-time: the phone mints a code, the installer claims it, and the
+code is dead (`409` on reuse — asserted in the e2e test). After that the bridge
+holds a device token and the browser holds a phone secret. The daemon token never
+leaves the laptop: the bridge reads `~/.agentremoted/token` and injects it as
+`X-Auth-Token`, so no browser ever needs it (asserted in the e2e test).
 
-1. Requires `python3`, `curl`. Detects `claude` / `codex` / `grok` / `dsh` on PATH.
-2. Installs upstream `agent-remote` daemon to `~/.local/share/agent-remote` with
-   `bind: 127.0.0.1`. Prints nothing about tokens to the user.
-3. Creates a venv, installs `forge-bridge` (Python, dependency: `websockets`).
-4. Generates Ed25519 + X25519 device keys in `~/.forge/` (mode 0600).
-5. Claims the pairing code, completes ECDH, writes `~/.forge/device.json`.
-6. Installs launchd (macOS) or systemd --user (Linux) for daemon + bridge.
-7. Exits 0. Phone dashboard lights up.
+## Boundary 4 — daemon → CLI
 
-Bridge protocol (all payloads after handshake are nonce + AES-256-GCM):
+This is the boundary that was quietly broken, so it is the one with a test.
+
+The browser shows a command built by `lib/shared/cli-flags.ts`. The laptop runs a
+command built by:
+
+| CLI | Who builds it |
+| --- | --- |
+| claude | `vendor/…/providers/claude.py::prepare` |
+| codex | `vendor/…/providers/codex.py::prepare`, then `bridge/overlay/codex_mode.py` rewrites the sandbox |
+| cursor, antigravity, opencode, copilot | `bridge/overlay/cli_launch.py::build_headless_cmd` |
+
+`tests/cli-parity.test.mjs` runs **both** builders over the same matrix — real
+Python in a subprocess, real fixtures — and compares argv. If the UI and the
+machine ever disagree, it fails. `tests/e2e-prompt.test.mjs` goes further: it
+spawns the actual Next.js app, relay, bridge and daemon, sends a prompt, and
+asserts the prompt reached a real process byte-identical, as the last argument.
+
+---
+
+## The invariants
+
+Each one has a test that fails if you break it. Add to this list rather than
+adding a comment somewhere.
+
+| Invariant | Enforced by |
+| --- | --- |
+| The command the visitor reads is the command the laptop runs | `tests/cli-parity.test.mjs` |
+| A prompt survives the whole pipe byte-identical, last in argv | `tests/e2e-prompt.test.mjs` |
+| A read-only pass (deep research, plan mode) never carries a full-access flag | `tests/cli-flags.test.mjs`, `tests/cli-parity.test.mjs` |
+| The laptop's permission choice reaches every CLI, including codex | `tests/cli-parity.test.mjs` |
+| The model the visitor picked reaches the CLI | `tests/cli-parity.test.mjs`, `tests/e2e-prompt.test.mjs` |
+| A pairing code is single-use; a stolen device id is not enough | `tests/e2e-terminal.test.mjs`, `tests/e2e-prompt.test.mjs` |
+| The daemon token never reaches the browser | `tests/e2e-prompt.test.mjs` |
+| Terminal bytes are encrypted end to end | `tests/e2e-terminal.test.mjs`, `bridge/tests/test_crypto*.py` |
+| A file path cannot escape the laptop's root | `bridge/tests/test_files.py` |
+| A hidden tab costs zero requests | `tests/poll-schedule.test.mjs` |
+| Window z-order, minimise, cascade, tile, Alt+Tab | `tests/window-manager.test.mjs` |
+| The relay's two implementations route identically | `tests/relay-room.test.mjs` |
+
+## Running it
 
 ```
-{ "v": 1, "type": "req"|"res"|"event"|"ping",
-  "id": "uuid", "method": "GET"|"POST",
-  "path": "/api/sessions", "body": ..., "seq": n }
+cp .env.example .env.local     # then: pnpm doctor
+pnpm relay:dev                 # terminal 1 — relay on :8787
+pnpm dev                       # terminal 2 — app on :3000
+pnpm test                      # unit + e2e (spawns itself: app, relay, bridge, daemon)
+pnpm doctor                    # is this deployment actually wired up?
 ```
 
-Events: daemon SSE `/sse/status` and TUI snapshots become `event` frames.
-Browser never learns the localhost token; the bridge injects `X-Auth-Token`.
-
-### D. Crypto
-
-- Handshake: X25519 ECDH, transcript includes device_id and pairing room id.
-- Traffic: AES-256-GCM, 96-bit nonce, key rotation every 2^20 frames or 24h.
-- Device identity: Ed25519, challenge-response on every daemon reconnect
-  (stops a stranger from stealing `device_id` and sitting on the room).
-- Browser identity: same, keys in IndexedDB (non-extractable CryptoKey if possible).
-- Relay sees: device_id, frame size, timestamps. Never plaintext, never keys.
-
-### E. Status model (set expectations)
-
-```
-online     — daemon socket alive in last 15s
-asleep     — last seen < 12h, likely lid/sleep; queued frames will flush
-offline    — last seen > 12h or never
-```
-
-Permission prompts while asleep: queued, push-notification later (v2). v1:
-banner on the phone "Laptop asleep — prompt sends when it wakes."
-
-## Scale envelope
-
-| Users | Idle sockets | Where it lives | Cost shape |
-|---|---|---|---|
-| 1–50 (you + friends) | 50 | One Worker + DOs, free tier likely | ~$0 |
-| 1k | 1k hibernating | Same | cents–few dollars |
-| 10k | 10k hibernating | Same, watch pairing rate limits | still cheap if idle |
-| Active Live TUI | wakes the DO at 2–5 Hz | billable messages | this is the real cost |
-
-Do not poll from idle daemons. Heartbeat every 30s is enough; hibernation
-survives that if you are careful. Prefer daemon-driven events over client polls.
-
-## What the v0 app owns vs what is a Worker
-
-Built in this Next.js repo:
-
-- Landing, pairing screen, dashboard UI
-- Browser crypto + IndexedDB
-- Talk to the Worker URL via env `NEXT_PUBLIC_FORGE_RELAY_URL`
-
-Built as `relay/` in the same repo, deployed to Cloudflare (not Vercel):
-
-- Worker + Durable Objects
-- Pairing + device rooms
-
-Built as `bridge/` in the same repo, shipped by `public/install.sh`:
-
-- forge-bridge
-- installer that also vendors agent-remote
-
-## v1 / v2 cut
-
-v1 (ship): one laptop, one browser, claude+codex+grok via upstream daemon,
-pairing, E2E, reconnect, offline queue, status pill, guest sandbox on.
-
-v2: multi-laptop, `forge pair` recovery, push notifications, notarized macOS,
-Antigravity, share links, Windows.
+`pnpm doctor` is the plug-and-play check: toolchain, every env var and what breaks
+without it, relay reachability (it mints a real pairing code), Supabase plus
+whether the migration was applied, and the laptop-side modules.

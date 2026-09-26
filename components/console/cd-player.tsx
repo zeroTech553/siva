@@ -1,8 +1,8 @@
 'use client'
 
 import { useState } from 'react'
-import { DESK_SONGS, playDing, playSong, stopSong } from '@/lib/client/desk-sound'
-import { Win95Button } from '@/components/os/win95'
+import { DESK_SONGS, playDing, playSong, stopSong } from '@/lib/client/zero-sound'
+import { OsButton } from '@/components/computer/os/os-ui'
 
 export function CdPlayer() {
   const [current, setCurrent] = useState<(typeof DESK_SONGS)[number]['id']>(DESK_SONGS[0].id)
@@ -30,7 +30,7 @@ export function CdPlayer() {
         </select>
       </label>
       <div className="cd-actions">
-        <Win95Button
+        <OsButton
           onClick={() => {
             void playSong(current)
             setPlaying(true)
@@ -38,15 +38,15 @@ export function CdPlayer() {
           }}
         >
           Play
-        </Win95Button>
-        <Win95Button
+        </OsButton>
+        <OsButton
           onClick={() => {
             stopSong()
             setPlaying(false)
           }}
         >
           Stop
-        </Win95Button>
+        </OsButton>
       </div>
     </div>
   )

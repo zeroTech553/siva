@@ -4,16 +4,18 @@
  * Every visual rule lives in `styles/`, one file per concern, and this file
  * only fixes the import order. Import order *is* the cascade, so:
  *
- *   1. tokens.css  design tokens only (colours, radii, fonts, base, keyframes)
- *   2. desk.css    the physical desk: room, CRT monitor, tower, keyboard, mouse
- *   3. os.css      the retro OS chrome: desktop, windows, taskbar, start menu
- *   4. apps.css    apps inside an OS window: pairing, agent, terminal, files
+ *   1. tokens.css     design tokens only (colours, radii, fonts, base, keyframes)
+ *   2. computer.css   the physical machine: chassis, CRT, keyboard, mouse, LEDs
+ *   3. os.css         Zero OS chrome: desktop, windows, taskbar, start, shutdown
+ *   4. apps.css       apps inside an OS window: terminal, pairing, CLI, agent, files
+ *   5. landing.css    the marketing page around the machine: pegboard, sections
  *
- * Rules for one concern must never leak into another file — the four class
- * namespaces are disjoint (`.desk-`, `.crt-`, `.tower-`, `.win95-`, and the app classes),
- * which is what keeps this order safe to reason about.
+ * The five class namespaces are disjoint (`.zc-`/`.mk-`/`.mm-`, `.zos-`/`.os-`,
+ * the app classes, `.land-`), which is what keeps this order safe to reason
+ * about: a rule in a later file can only ever restyle, never fight, an earlier one.
  */
 @import '../styles/tokens.css';
-@import '../styles/desk.css';
+@import '../styles/computer.css';
 @import '../styles/os.css';
 @import '../styles/apps.css';
+@import '../styles/landing.css';

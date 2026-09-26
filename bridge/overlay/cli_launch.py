@@ -309,9 +309,16 @@ def detect_cli_flags(exec_path):
         print_flag = "--print"
     elif re.search(r"(?:^|\s)-p(?:\s|,|$)", lower):
         print_flag = "-p"
+    if "--model" in lower:
+        model_flag = "--model"
+    elif re.search(r"(?:^|\s)-m(?:\s|,|$)", lower):
+        model_flag = "-m"
+    else:
+        model_flag = ""
     flags = {
         "help": bool(help_text.strip()),
         "print_flag": print_flag,
+        "model_flag": model_flag,
         "output_format": "--output-format" in lower,
         "stream_json": "stream-json" in lower,
         "stream_partial": "--stream-partial-output" in lower,
@@ -349,8 +356,50 @@ def _use_flag(flags, name, flavor):
     return flags.get(name) or defaults.get(name)
 
 
-def _build_opencode_cmd(binary, prompt, session_id=""):
-    cmd = [binary, "run", "--format", "json", "--auto"]
+# Which flag each CLI takes a model id on. Only used when `--help` did not say
+# (a CLI whose help text is empty or unparseable still gets the model the
+# visitor picked, rather than silently running its default).
+_MODEL_FLAGS = {
+    "claude": "--model",
+    "cursor": "--model",
+    "agy": "--model",
+    "opencode": "--model",
+    "copilot": "--model",
+    "codex": "-m",
+}
+
+
+def _wanted_model(model):
+    """A model id worth passing on, or '' for 'let the CLI decide'."""
+    wanted = " ".join(str(model or "").split())
+    if not wanted:
+        return ""
+    # "auto" is a real model id for some CLIs (cursor's own picker), so only the
+    # words that mean "you choose" are dropped.
+    if wanted.lower() in ("default", "none"):
+        return ""
+    return wanted[:120]
+
+
+def _model_flag(flags, flavor):
+    detected = str((flags or {}).get("model_flag") or "")
+    if detected:
+        return detected
+    return _MODEL_FLAGS.get(flavor, "--model")
+
+
+def _build_opencode_cmd(binary, prompt, session_id="", model="", permission_mode=""):
+    cmd = [binary, "run", "--format", "json"]
+    # "Plan" on the phone has to mean something here too: opencode's own plan
+    # agent proposes without editing, and --auto (approve everything) is exactly
+    # wrong for a read-only pass.
+    if str(permission_mode or "") == "plan":
+        cmd.extend(["--agent", "plan"])
+    else:
+        cmd.append("--auto")
+    wanted = _wanted_model(model)
+    if wanted:
+        cmd.extend(["--model", wanted])
     sid = str(session_id or "").strip()
     if sid:
         cmd.extend(["--session", sid])
@@ -358,31 +407,56 @@ def _build_opencode_cmd(binary, prompt, session_id=""):
     return cmd
 
 
-def _build_copilot_cmd(binary, prompt):
-    return [
-        binary,
-        "-p",
-        prompt,
-        "--allow-all-tools",
-        "--silent",
-        "--output-format",
-        "json",
-    ]
+# How a flavor spells a permission mode the generic logic below cannot express.
+# claude speaks --permission-mode; codex is rewritten by apply_codex_permission;
+# cursor and copilot have their own words for "look, don't touch".
+_PERMISSION_ARGV = {
+    "cursor": {"plan": ["--mode", "plan"]},
+    "copilot": {"plan": ["--deny-tool", "write"]},
+}
 
 
-def build_headless_cmd(binary, prompt, session_id="", permission_mode="", flavor="generic"):
-    """Build argv for a non-interactive turn."""
+def _build_copilot_cmd(binary, prompt, model="", permission_mode=""):
+    # Every option first, `-p <prompt>` last. Copilot takes the prompt as the
+    # value of -p, so this is the only ordering that keeps the invariant the
+    # other flavors have: the prompt is the final argument, whatever the CLI
+    # does with trailing positionals.
+    cmd = [binary]
+    wanted = _wanted_model(model)
+    if wanted:
+        cmd.extend(["--model", wanted])
+    # A read-only pass must not allow every tool: copilot's own deny list is the
+    # only brake it has, so writes go on it and --allow-all-tools stays off.
+    if str(permission_mode or "") == "plan":
+        cmd.extend(["--deny-tool", "write"])
+    else:
+        cmd.append("--allow-all-tools")
+    cmd.extend(["--silent", "--output-format", "json", "-p", prompt])
+    return cmd
+
+
+def build_headless_cmd(binary, prompt, session_id="", permission_mode="", flavor="generic", model=""):
+    """Build argv for a non-interactive turn.
+
+    `model` is the model the visitor picked in the browser (lib/shared/cli-flags.ts
+    puts the same `--model <id>` in the command it previews). Empty / "default"
+    means "let the CLI choose", which is what the daemon did before this existed.
+    """
     flavor = _flavor_key(flavor)
     if flavor == "opencode":
-        return _build_opencode_cmd(binary, prompt, session_id)
+        return _build_opencode_cmd(binary, prompt, session_id, model, permission_mode)
     if flavor == "copilot":
-        return _build_copilot_cmd(binary, prompt)
+        return _build_copilot_cmd(binary, prompt, model, permission_mode)
     flags = detect_cli_flags(binary)
     defaults = _FLAVOR_DEFAULTS.get(flavor) or {}
     cmd = [binary]
 
     print_flag = flags.get("print_flag")
-    if not print_flag and not flags.get("help"):
+    if not print_flag:
+        # Detection found nothing, so fall back to what this flavor is known to
+        # take — even when `--help` answered. Guessing a flag risks "unknown
+        # option" (a loud, debuggable failure); omitting it risks launching an
+        # interactive TUI inside a headless job, which hangs until the timeout.
         print_flag = defaults.get("print_flag")
     if print_flag:
         cmd.append(print_flag)
@@ -395,16 +469,26 @@ def build_headless_cmd(binary, prompt, session_id="", permission_mode="", flavor
         cmd.append("--stream-partial-output")
 
     mode = permission_mode or ""
-    auto = mode in ("bypassPermissions", "acceptEdits", "")
-    if auto and _use_flag(flags, "skip_permissions", flavor):
+    auto = mode in ("bypassPermissions", "acceptEdits", "", "default")
+    translated = (_PERMISSION_ARGV.get(flavor) or {}).get(mode)
+    if translated is not None:
+        cmd.extend(translated)
+    elif auto and _use_flag(flags, "skip_permissions", flavor):
         cmd.append("--dangerously-skip-permissions")
     elif auto and _use_flag(flags, "yes", flavor):
         cmd.append("--yes")
     elif flags.get("help") and flags.get("permission_mode") and mode:
         cmd.extend(["--permission-mode", mode])
 
-    if _use_flag(flags, "force", flavor) and "--force" not in cmd:
+    # A read-only pass never skips the safety check, whatever the CLI offers.
+    if _use_flag(flags, "force", flavor) and "--force" not in cmd and mode != "plan":
         cmd.append("--force")
+
+    wanted = _wanted_model(model)
+    if wanted:
+        model_flag = _model_flag(flags, flavor)
+        if model_flag and model_flag not in cmd:
+            cmd.extend([model_flag, wanted])
 
     sid = str(session_id or "").strip()
     if sid:
@@ -415,6 +499,76 @@ def build_headless_cmd(binary, prompt, session_id="", permission_mode="", flavor
 
     cmd.append(prompt)
     return cmd
+
+
+# ---------------------------------------------------------------------------
+# codex: making the phone's permission choice real
+# ---------------------------------------------------------------------------
+# `codex exec` speaks sandbox/approval, not claude's permission_mode, and the
+# upstream daemon's codex provider takes both from its own config.json — so the
+# mode the visitor picked in the browser used to be dropped on the floor and
+# every codex job ran with full access. bridge/overlay/codex_mode.py calls
+# these two functions to rewrite the argv the upstream provider built.
+
+_CODEX_SANDBOX_ARGV = {
+    # Read-only investigation: nothing on disk may change.
+    "plan": ["-s", "read-only", "-a", "never"],
+    # Edits inside the project, no prompting (a headless codex cannot ask a phone).
+    "acceptEdits": ["-s", "workspace-write", "-a", "never"],
+    # The upstream default: no sandbox, no approvals. Disposable machines only.
+    "bypassPermissions": ["--dangerously-bypass-approvals-and-sandbox"],
+    # "Ask each time" cannot be honoured by `codex exec` — there is no TTY to
+    # ask on — so it gets the same box as acceptEdits rather than full access.
+    # "default" is what the browser sends for that choice (see
+    # lib/shared/daemon.ts::wirePermissionMode).
+    "": ["-s", "workspace-write", "-a", "never"],
+    "default": ["-s", "workspace-write", "-a", "never"],
+}
+
+_CODEX_VALUE_FLAGS = ("-s", "--sandbox", "-a", "--ask-for-approval")
+_CODEX_BOOL_FLAGS = (
+    "--dangerously-bypass-approvals-and-sandbox",
+    "--full-auto",
+    "--yolo",
+)
+
+
+def codex_sandbox_argv(mode):
+    """The codex flags that correspond to a permission_mode from the browser."""
+    return list(_CODEX_SANDBOX_ARGV.get(str(mode or ""), _CODEX_SANDBOX_ARGV[""]))
+
+
+def apply_codex_permission(cmd, mode):
+    """Rewrite an upstream `codex exec` argv so the picked mode wins.
+
+    Whatever sandbox/approval the daemon's config asked for is dropped and
+    replaced, in the same position (right after `exec`), so the prompt stays the
+    last argument and `-C <cwd>` keeps its place.
+    """
+    out = []
+    skip_next = False
+    for piece in list(cmd or []):
+        token = str(piece)
+        if skip_next:
+            skip_next = False
+            continue
+        if token in _CODEX_VALUE_FLAGS:
+            skip_next = True
+            continue
+        if token.startswith(_CODEX_VALUE_FLAGS) and "=" in token:
+            continue
+        if token in _CODEX_BOOL_FLAGS:
+            continue
+        out.append(token)
+
+    replacement = codex_sandbox_argv(mode)
+    if not replacement:
+        return out
+    try:
+        at = out.index("exec") + 1
+    except ValueError:
+        at = 1 if len(out) > 1 else len(out)
+    return out[:at] + replacement + out[at:]
 
 
 def _clip(value, limit=400):

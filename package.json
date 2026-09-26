@@ -12,6 +12,8 @@
     "relay:dev": "pnpm --filter forge-relay-node dev",
     "sprites": "node pixel/build.mjs",
     "test": "node --test 'tests/*.test.mjs'",
+    "doctor": "node scripts/doctor.mjs",
+    "doctor:quick": "node scripts/doctor.mjs --no-code",
     "test:bridge": "cd bridge && python3 -m unittest discover -s tests"
   },
   "dependencies": {

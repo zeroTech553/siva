@@ -81,6 +81,7 @@ class CursorRunner:
             session_id=getattr(job, "session_id", "") or "",
             permission_mode=mode,
             flavor="cursor",
+            model=getattr(job, "model", "") or "",
         )
         env = dict(os.environ)
         extra = getattr(self.config, "cursor_env", None) or {}

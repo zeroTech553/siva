@@ -521,6 +521,7 @@ def overlay_daemon():
     download("/api/forge/cursor.py", providers / "cursor.py")
     download("/api/forge/antigravity.py", providers / "antigravity.py")
     download("/api/forge/cli_provider.py", providers / "cli_provider.py")
+    download("/api/forge/codex_mode.py", providers / "codex_mode.py")
     download("/api/forge/opencode.py", providers / "opencode.py")
     download("/api/forge/copilot.py", providers / "copilot.py")
     download("/api/forge/forge_hook.py", providers / "forge_hook.py")
@@ -631,8 +632,13 @@ def configure_daemon(found, preferred=""):
         "port": DAEMON_PORT,
         "providers": names,
         "provider": preferred or (list(found.keys())[0] if found else names[0]),
-        "permission_mode": "bypassPermissions",
-        "codex_sandbox": "danger-full-access",
+        # Least privilege that still works headless: edits inside the project
+        # are accepted, anything else is asked — and the daemon routes those
+        # questions to the phone (providers/claude.py::_permission_server).
+        # A job always carries the mode the visitor picked; this is only the
+        # fallback for a client that sends none, so it must not be full access.
+        "permission_mode": "acceptEdits",
+        "codex_sandbox": "workspace-write",
     })
     if found.get("claude"):
         config["claude_bin"] = found["claude"]

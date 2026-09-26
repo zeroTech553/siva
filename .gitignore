@@ -21,3 +21,6 @@ relay/worker/.wrangler/
 
 # Local Python venv for bridge tests
 .venv/
+
+# Scratch build dir for the end-to-end tests' dev server (FORGE_DIST_DIR)
+.next-e2e/

@@ -1,237 +1,825 @@
-/* styles/os.css — the retro OS chrome: desktop, windows, title bars, taskbar, start menu,
-   buttons, icons. Owned by components/os/*. */
+/* styles/os.css — the Zero OS chrome: desktop, windows, title bars, taskbar,
+   Start menu, context menu, shutdown dialog, and the control set.
+   Owned by components/computer/os/**.
 
+   Namespace: .zos-*  (Zero OS). Nothing else may use it.
 
+   ── How it scales ───────────────────────────────────────────────────────────
+   .zc-screen (styles/computer.css) is a CSS container, so this file sizes the
+   whole OS in `cqw` ONCE, on .zos-desktop, and then works in `em` everywhere
+   below it. One number moves the entire desktop:
 
-.win95-desktop {
+     font-size: clamp(8px, 3.4cqw, 15px)
+
+   8px floor  → a phone-sized tube still has readable chrome
+   15px cap   → a laptop-sized tube does not turn into a billboard
+
+   ── Colour rule ─────────────────────────────────────────────────────────────
+   Active chrome is deep-cyan → light-cyan. Inactive chrome is grey plastic.
+   The paper colour (#f5f8f8) is every window body. There is no green and no
+   lime anywhere: the accent is very light cyan (--zero-cyan-1 … --zero-cyan-5).
+   ──────────────────────────────────────────────────────────────────────────── */
+
+/* ══════════════════════════════ desktop ══════════════════════════════ */
+
+.zos-desktop {
   position: relative;
   display: flex;
   min-height: 0;
   flex: 1;
   flex-direction: column;
-  color: var(--foreground);
+  color: var(--zero-paper);
+  font-family: var(--font-os);
+  font-size: clamp(8px, 3.4cqw, 15px);
+  line-height: 1.3;
 }
 
-.win95-icons {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 8px;
-  padding: 8px;
+.zos-desktop-area {
+  position: relative;
+  min-height: 0;
+  flex: 1;
+  overflow: hidden;
+  background-color: var(--zero-cyan-5);
+  background-image: radial-gradient(125% 115% at 18% -10%, var(--zero-cyan-4) 0%, transparent 58%),
+    linear-gradient(rgb(255 255 255 / 7%) 1px, transparent 1px),
+    linear-gradient(90deg, rgb(255 255 255 / 7%) 1px, transparent 1px);
+  background-size: auto, 1.7em 1.7em, 1.7em 1.7em;
 }
 
-.win95-icon {
+.zos-desktop-mark {
+  position: absolute;
+  right: 0.8em;
+  bottom: 0.7em;
   display: flex;
   flex-direction: column;
+  align-items: flex-end;
+  gap: 0.2em;
+  color: rgb(255 255 255 / 22%);
+  pointer-events: none;
+}
+
+.zos-desktop-mark em {
+  font-family: var(--font-mono);
+  font-size: 0.72em;
+  font-style: normal;
+  letter-spacing: 0.14em;
+}
+
+.zos-logo {
+  display: inline-flex;
   align-items: center;
-  gap: 4px;
-  color: var(--card);
-  font-size: 10px;
+  gap: 0.4em;
+}
+
+.zos-logo-text {
+  display: flex;
+  flex-direction: column;
+  line-height: 1;
+}
+
+.zos-logo-text strong {
+  font-family: var(--font-os);
+  font-size: 1.5em;
   font-weight: 700;
-  text-shadow: 1px 1px 0 var(--border);
+  letter-spacing: 0.02em;
 }
 
-.win95-icon img {
-  width: 24px;
-  height: 24px;
-  object-fit: contain;
-  border: 2px solid var(--border);
-  background: var(--card);
-  padding: 2px;
+.zos-logo-text em {
+  font-family: var(--font-mono);
+  font-size: 0.7em;
+  font-style: normal;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  opacity: 0.75;
 }
 
-/* Desktop glyphs are hand-authored pixel sprites (pixel/sprites.mjs -> pnpm
-   sprites -> public/sprites/*.png). Unknown ids fall back to a plain tile. */
+.zos-logo-2 .zos-logo-text strong {
+  font-size: 2.1em;
+}
 
-.win95-glyph {
-  width: 28px;
-  height: 28px;
-  background-color: transparent;
-  background-size: contain;
-  background-repeat: no-repeat;
+/* ── desktop icons ── */
+
+.zos-icons {
+  position: absolute;
+  top: 0.6em;
+  left: 0.5em;
+  z-index: 1;
+  display: flex;
+  max-height: 100%;
+  flex-direction: column;
+  flex-wrap: wrap;
+  gap: 0.45em;
+  padding: 0.2em;
+}
+
+.zos-icon {
+  display: flex;
+  width: 5.4em;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.2em;
+  border: 1px solid transparent;
+  padding: 0.2em 0.1em;
+  color: #ffffff;
+}
+
+.zos-icon-label {
+  max-width: 100%;
+  overflow: hidden;
+  font-size: 0.86em;
+  letter-spacing: 0.02em;
+  text-overflow: ellipsis;
+  text-shadow: 1px 1px 0 var(--zero-ink);
+  white-space: nowrap;
+}
+
+.zos-icon:hover,
+.zos-icon:focus-visible {
+  border-color: rgb(255 255 255 / 55%);
+  background: rgb(18 120 142 / 45%);
+}
+
+.zos-icon:active {
+  background: rgb(18 120 142 / 75%);
+}
+
+.zos-icon-tile {
+  width: 2em;
+  height: 2em;
+  border: 1px solid var(--zero-ink);
+  background: var(--zero-cyan-2);
+}
+
+.zos-sprite {
+  width: 2.1em;
+  height: 2.1em;
+  border: 1px solid var(--zero-ink);
+  background: var(--zero-paper);
+  padding: 1px;
   image-rendering: pixelated;
+  object-fit: contain;
 }
 
-.win95-glyph-computer {
-  background-image: url('/sprites/computer.png');
+.zos-title .zos-sprite,
+.zos-task .zos-sprite,
+.zos-menu-item .zos-sprite {
+  width: 1.35em;
+  height: 1.35em;
+  flex: 0 0 auto;
 }
 
-.win95-glyph-agent {
-  background-image: url('/sprites/agent.png');
+/* ══════════════════════════════ windows ══════════════════════════════ */
+
+.zos-window {
+  position: absolute;
+  display: flex;
+  min-width: 0;
+  min-height: 0;
+  flex-direction: column;
+  border: 2px solid var(--zero-ink);
+  background: var(--zero-paper);
+  color: var(--zero-ink);
+  box-shadow: 3px 3px 0 rgb(16 23 27 / 45%);
 }
 
-.win95-glyph-terminal {
-  background-image: url('/sprites/terminal.png');
+.zos-window-active {
+  box-shadow: 4px 4px 0 rgb(16 23 27 / 62%);
 }
 
-.win95-glyph-files {
-  background-image: url('/sprites/files.png');
+.zos-window-dragging {
+  box-shadow: 6px 6px 0 rgb(16 23 27 / 55%);
 }
 
-.win95-glyph-player {
-  background-image: url('/sprites/player.png');
+.zos-title {
+  display: flex;
+  align-items: center;
+  gap: 0.35em;
+  border-bottom: 2px solid var(--zero-ink);
+  background: linear-gradient(90deg, var(--zero-cyan-5) 0%, var(--zero-cyan-4) 100%);
+  color: #ffffff;
+  padding: 0.25em 0.3em;
+  font-size: 1em;
+  font-weight: 700;
+  cursor: grab;
+  touch-action: none;
 }
 
-.win95-glyph-recycle {
-  background-image: url('/sprites/recycle.png');
+.zos-window:not(.zos-window-active) > .zos-title {
+  background: linear-gradient(90deg, var(--zero-plastic-3), var(--zero-plastic-2));
+  color: var(--zero-ink-soft);
 }
 
-.win95-glyph-setup {
-  background-image: url('/sprites/setup.png');
+.zos-window-dragging > .zos-title {
+  cursor: grabbing;
 }
 
-.win95-window {
+.zos-title-text {
+  min-width: 0;
+  flex: 1;
+  overflow: hidden;
+  letter-spacing: 0.02em;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.zos-title-dot {
+  width: 0.85em;
+  height: 0.85em;
+  flex: 0 0 auto;
+  border: 1px solid currentColor;
+}
+
+.zos-title-buttons {
+  display: flex;
+  flex: 0 0 auto;
+  gap: 0.2em;
+}
+
+.zos-caption-btn {
+  display: inline-flex;
+  width: 1.6em;
+  height: 1.5em;
+  min-height: 14px;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--zero-ink);
+  background: var(--zero-paper);
+  color: var(--zero-ink);
+  padding: 0;
+  font-family: var(--font-os);
+  font-size: 0.86em;
+  line-height: 1;
+  box-shadow: 1px 1px 0 var(--zero-ink);
+}
+
+.zos-caption-btn:active {
+  box-shadow: none;
+  translate: 1px 1px;
+}
+
+.zos-window-body {
   display: flex;
   min-height: 0;
   flex: 1;
   flex-direction: column;
-  margin: 6px 6px 0;
-  border: 3px solid var(--border);
-  background: var(--card);
-  box-shadow: 4px 4px 0 var(--border);
+  overflow: hidden;
+  background: var(--zero-paper);
 }
 
-.win95-window-fit {
-  flex: 0 1 auto;
-  max-height: calc(100% - 10px);
-}
-
-.win95-title {
+.zos-app {
   display: flex;
+  min-height: 0;
+  flex: 1;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.zos-status {
+  display: flex;
+  flex: 0 0 auto;
   align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  background: var(--primary);
-  color: var(--primary-foreground);
-  padding: 3px 4px;
-  font-size: 11px;
+  gap: 0.4em;
+  border-top: 2px solid var(--zero-ink);
+  background: var(--zero-paper-2);
+  padding: 0.22em 0.4em;
+  color: var(--zero-ink-soft);
+  font-size: 0.85em;
+}
+
+.zos-status-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.zos-grip {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  width: 1.2em;
+  height: 1.2em;
+  background-image: linear-gradient(135deg, transparent 42%, var(--zero-ink-soft) 42% 52%, transparent 52% 62%, var(--zero-ink-soft) 62% 72%, transparent 72%);
+  cursor: nwse-resize;
+  touch-action: none;
+}
+
+/* ══════════════════════════════ taskbar ══════════════════════════════ */
+
+.zos-taskbar {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 0.3em;
+  border-top: 2px solid var(--zero-ink);
+  background: linear-gradient(180deg, var(--zero-plastic) 0%, var(--zero-plastic-2) 100%);
+  padding: 0.25em;
+  color: var(--zero-ink);
+}
+
+.zos-start {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 0.3em;
+  border: 2px solid var(--zero-ink);
+  background: var(--zero-paper);
+  padding: 0.25em 0.5em;
+  font-family: var(--font-os);
+  font-size: 1em;
   font-weight: 700;
+  line-height: 1.1;
+  box-shadow: 2px 2px 0 var(--zero-ink);
 }
 
-.win95-x,
-.win95-btn,
-.win95-start,
-.win95-task {
-  border: 2px solid var(--border);
-  background: var(--card);
-  color: var(--foreground);
-  padding: 2px 8px;
-  font-size: 11px;
-  font-weight: 700;
-  box-shadow: 2px 2px 0 var(--border);
-}
-
-.win95-x {
-  padding: 0 6px;
-}
-
-.win95-x:active,
-.win95-btn:active,
-.win95-start:active,
-.win95-task:active,
-.win95-start-open,
-.win95-task-active {
+.zos-start-open {
+  background: var(--zero-cyan-2);
   box-shadow: none;
   translate: 2px 2px;
 }
 
-.win95-body {
+.zos-start-mark {
+  display: block;
+  width: 0.95em;
+  height: 0.95em;
+  flex: 0 0 auto;
+  background-image: linear-gradient(var(--zero-cyan-5), var(--zero-cyan-5)),
+    linear-gradient(var(--zero-cyan-4), var(--zero-cyan-4)),
+    linear-gradient(var(--zero-cyan-3), var(--zero-cyan-3)),
+    linear-gradient(var(--zero-cyan-2), var(--zero-cyan-2));
+  background-position:
+    0 0,
+    100% 0,
+    0 100%,
+    100% 100%;
+  background-repeat: no-repeat;
+  background-size: 44% 44%;
+}
+
+.zos-tasks {
   display: flex;
-  min-height: 0;
+  min-width: 0;
+  flex: 1;
+  gap: 0.2em;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.zos-tasks::-webkit-scrollbar {
+  display: none;
+}
+
+.zos-task {
+  display: inline-flex;
+  min-width: 0;
+  max-width: 9em;
+  flex: 0 1 auto;
+  align-items: center;
+  gap: 0.25em;
+  border: 1px solid var(--zero-ink);
+  background: var(--zero-paper);
+  padding: 0.22em 0.4em;
+  font-family: var(--font-os);
+  font-size: 0.9em;
+  line-height: 1.1;
+  box-shadow: 1px 1px 0 rgb(16 23 27 / 60%);
+}
+
+.zos-task-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.zos-task-active {
+  background: var(--zero-cyan-2);
+  box-shadow: none;
+  translate: 1px 1px;
+}
+
+.zos-task-min {
+  opacity: 0.62;
+}
+
+.zos-tray {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 0.3em;
+  border: 1px solid var(--zero-ink);
+  background: var(--zero-paper-2);
+  padding: 0.18em 0.4em;
+  font-size: 0.85em;
+}
+
+.zos-clock {
+  font-family: var(--font-os);
+  letter-spacing: 0.04em;
+}
+
+.zos-about {
+  position: absolute;
+  right: 0.4em;
+  bottom: 2.6em;
+  z-index: 2;
+  width: 1.6em;
+  height: 1.6em;
+  border: 1px solid var(--zero-ink);
+  background: var(--zero-paper);
+  color: var(--zero-ink);
+  font-family: var(--font-os);
+  font-size: 0.9em;
+  opacity: 0.55;
+}
+
+/* ══════════════════════════════ menus ══════════════════════════════ */
+
+.zos-menu {
+  position: absolute;
+  z-index: 50;
+  display: flex;
+  align-items: stretch;
+  border: 2px solid var(--zero-ink);
+  background: var(--zero-paper);
+  color: var(--zero-ink);
+  box-shadow: 4px 4px 0 rgb(16 23 27 / 55%);
+  animation: zos-fade-in 0.1s steps(2);
+}
+
+.zos-menu-start {
+  bottom: 0.35em;
+  left: 0.35em;
+  width: 14em;
+  max-width: 70%;
+}
+
+.zos-menu-context {
+  width: 13em;
+  max-width: 74%;
+}
+
+.zos-menu-brand {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: flex-end;
+  border-right: 1px solid var(--zero-ink);
+  background: linear-gradient(180deg, var(--zero-cyan-5) 0%, var(--zero-cyan-4) 100%);
+  color: #ffffff;
+  padding: 0.5em 0.15em;
+  font-family: var(--font-os);
+  font-size: 1em;
+  letter-spacing: 0.1em;
+  writing-mode: vertical-rl;
+  transform: rotate(180deg);
+}
+
+.zos-menu-list {
+  display: flex;
+  min-width: 0;
   flex: 1;
   flex-direction: column;
+  gap: 0.05em;
+  margin: 0;
+  padding: 0.2em;
+  list-style: none;
+}
+
+.zos-menu-item {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  gap: 0.45em;
+  border: 1px solid transparent;
+  padding: 0.32em 0.35em;
+  font-family: var(--font-os);
+  font-size: 0.94em;
+  text-align: left;
+}
+
+.zos-menu-item:hover,
+.zos-menu-item:focus-visible {
+  border-color: var(--zero-ink);
+  background: var(--zero-cyan-3);
+}
+
+.zos-menu-label {
+  min-width: 0;
   overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-.win95-status {
-  border-top: 2px solid var(--border);
-  padding: 2px 6px;
-  font-size: 9px;
+.zos-menu-hint {
+  margin-left: auto;
+  font-family: var(--font-mono);
+  font-size: 0.78em;
+  opacity: 0.6;
 }
 
-.win95-taskbar {
+.zos-menu-bullet {
+  width: 1em;
+  height: 1em;
+  flex: 0 0 auto;
+  border: 1px solid var(--zero-ink);
+  background: var(--zero-cyan-2);
+}
+
+.zos-menu-divider {
+  height: 0;
+  margin: 0.18em 0.25em;
+  border-top: 1px solid var(--zero-plastic-3);
+}
+
+/* ══════════════════════════════ modal + dialog ══════════════════════════════ */
+
+.zos-modal {
+  position: absolute;
+  inset: 0;
+  z-index: 60;
   display: flex;
   align-items: center;
-  gap: 4px;
-  margin-top: auto;
-  border-top: 3px solid var(--border);
-  background: var(--card);
-  padding: 3px;
+  justify-content: center;
+  background: rgb(4 22 28 / 48%);
+  padding: 0.8em;
+  animation: zos-fade-in 0.12s steps(3);
 }
 
-.win95-tasks {
+.zos-dialog {
   display: flex;
-  min-width: 0;
-  flex: 1;
-  gap: 3px;
-  overflow: hidden;
-}
-
-.win95-task {
-  min-width: 0;
-  flex: 1;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.win95-tray {
-  border: 2px solid var(--border);
-  padding: 2px 6px;
-  font-size: 10px;
-  font-weight: 700;
-}
-
-.win95-menu {
-  position: absolute;
-  bottom: 28px;
-  left: 3px;
-  z-index: 5;
-  display: flex;
-  width: 148px;
+  width: min(21em, 94%);
   flex-direction: column;
-  border: 3px solid var(--border);
-  background: var(--card);
-  box-shadow: 4px 4px 0 var(--border);
+  border: 2px solid var(--zero-ink);
+  background: var(--zero-paper);
+  color: var(--zero-ink);
+  box-shadow: 5px 5px 0 rgb(16 23 27 / 60%);
 }
 
-.win95-menu button {
-  padding: 8px 10px;
-  text-align: left;
-  font-size: 11px;
-  font-weight: 700;
+.zos-title-dialog {
+  cursor: default;
 }
 
-.win95-note {
-  padding: 6px 8px 0;
-  font-size: 10px;
-  line-height: 1.4;
+.zos-dialog-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55em;
+  padding: 0.7em;
 }
 
-.win95-title,
-.win95-title > * {
+.zos-dialog-question {
+  margin: 0;
+  font-family: var(--font-os);
+  font-size: 0.95em;
+}
+
+.zos-radio-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3em;
+}
+
+.zos-radio {
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  gap: 0.45em;
+  border: 1px solid transparent;
+  padding: 0.3em;
+  cursor: pointer;
+}
+
+.zos-radio-on {
+  border-color: var(--zero-ink);
+  background: var(--zero-cyan-1);
+}
+
+.zos-radio input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+}
+
+.zos-radio-dot {
+  width: 0.95em;
+  height: 0.95em;
+  flex: 0 0 auto;
+  border: 2px solid var(--zero-ink);
+  border-radius: 50%;
+  background: #ffffff;
+  margin-top: 0.15em;
+}
+
+.zos-radio-on .zos-radio-dot {
+  background: radial-gradient(circle, var(--zero-ink) 0 34%, #ffffff 40%);
+}
+
+.zos-radio-text {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15em;
+}
+
+.zos-radio-label {
+  font-family: var(--font-os);
+  font-size: 0.92em;
+}
+
+.zos-radio-hint {
+  font-family: var(--font-sans);
+  font-size: 0.86em;
+  color: var(--zero-ink-soft);
+  line-height: 1.35;
+}
+
+.zos-dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.4em;
+  border-top: 2px solid var(--zero-ink);
+  background: var(--zero-paper-2);
+  padding: 0.5em;
+}
+
+/* ══════════════════════════════ control set ══════════════════════════════ */
+
+.zos-btn {
+  border: 2px solid var(--zero-ink);
+  background: linear-gradient(180deg, var(--zero-paper) 0%, var(--zero-plastic) 100%);
+  color: var(--zero-ink);
+  padding: 0.35em 0.7em;
+  font-family: var(--font-os);
+  font-size: 0.95em;
+  line-height: 1.2;
+  box-shadow: 2px 2px 0 var(--zero-ink);
+  cursor: pointer;
+}
+
+.zos-btn:active {
+  box-shadow: none;
+  translate: 2px 2px;
+}
+
+.zos-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+.zos-btn-primary {
+  background: linear-gradient(180deg, var(--zero-cyan-3) 0%, var(--zero-cyan-4) 100%);
+}
+
+.zos-btn-danger {
+  color: var(--zero-bad);
+}
+
+.zos-field {
+  display: flex;
   min-width: 0;
+  flex-direction: column;
+  gap: 0.2em;
+}
+
+.zos-field-label {
+  color: var(--zero-ink-soft);
+  font-family: var(--font-os);
+  font-size: 0.78em;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.zos-input,
+.zos-select,
+.zos-textarea {
+  width: 100%;
+  border: 2px solid var(--zero-ink);
+  background: #ffffff;
+  color: var(--zero-ink);
+  padding: 0.32em 0.4em;
+  font-family: var(--font-sans);
+  font-size: 0.95em;
+  box-shadow: inset 1px 1px 0 rgb(16 23 27 / 22%);
+}
+
+.zos-input-mono,
+.zos-textarea {
+  font-family: var(--font-mono);
+}
+
+.zos-textarea {
+  line-height: 1.45;
+  resize: none;
+}
+
+.zos-select {
+  font-family: var(--font-mono);
+}
+
+.zos-note {
+  margin: 0;
+  color: var(--zero-ink-soft);
+  font-family: var(--font-sans);
+  font-size: 0.88em;
+  line-height: 1.45;
+}
+
+.zos-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4em;
+  border: 2px solid var(--zero-ink);
+  margin: 0;
+  padding: 0.5em;
+}
+
+.zos-group legend {
+  padding: 0 0.3em;
+  font-family: var(--font-os);
+  font-size: 0.8em;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.zos-pill {
+  border: 1px solid var(--zero-ink);
+  padding: 0.05em 0.35em;
+  font-family: var(--font-os);
+  font-size: 0.76em;
+  letter-spacing: 0.04em;
   white-space: nowrap;
 }
 
-.win95-title > span:first-child {
-  overflow: hidden;
-  text-overflow: ellipsis;
+.zos-pill-idle {
+  background: var(--zero-plastic-2);
 }
 
-.win95-window {
-  margin: 4px;
+.zos-pill-good {
+  background: var(--zero-cyan-2);
 }
 
-@media (max-width: 480px) {
-  .win95-taskbar {
-    gap: 2px;
-    padding: 2px;
-  }
+.zos-pill-warn {
+  background: #f5e6c9;
+}
 
-  .win95-start,
-  .win95-task,
-  .win95-tray {
-    padding: 2px 4px;
-    font-size: 9px;
-  }
+.zos-pill-bad {
+  background: #f1dad5;
+  color: var(--zero-bad);
+}
+
+.zos-check {
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  gap: 0.4em;
+  border: 1px solid transparent;
+  padding: 0.22em;
+  cursor: pointer;
+}
+
+.zos-check:hover {
+  border-color: var(--zero-plastic-3);
+  background: var(--zero-cyan-1);
+}
+
+.zos-check input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+}
+
+.zos-check-box {
+  display: flex;
+  width: 1.05em;
+  height: 1.05em;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid var(--zero-ink);
+  background: #ffffff;
+  font-size: 0.8em;
+  line-height: 1;
+  box-shadow: inset 1px 1px 0 rgb(16 23 27 / 22%);
+}
+
+.zos-check-text {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 0.1em;
+}
+
+.zos-check-label {
+  font-family: var(--font-sans);
+  font-size: 0.92em;
+  font-weight: 600;
+}
+
+.zos-check-hint {
+  color: var(--zero-ink-soft);
+  font-family: var(--font-sans);
+  font-size: 0.84em;
+  line-height: 1.35;
+}
+
+.zos-check-risky .zos-check-label {
+  color: var(--zero-bad);
 }

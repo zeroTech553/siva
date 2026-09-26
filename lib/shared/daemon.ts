@@ -90,6 +90,22 @@ export const PERMISSION_MODES = [
   { id: '', label: 'Ask each time' },
 ] as const
 
+/**
+ * The permission_mode to put on the wire.
+ *
+ * The daemon reads an empty mode as "use the laptop's config default"
+ * (agentremoted/jobs.py: `mode = permission_mode or self.config.permission_mode`),
+ * so sending the UI's "Ask each time" as `''` would silently run the job with
+ * whatever that machine's config says. `default` is claude's own word for
+ * asking, and the daemon routes those prompts to the phone — which is what the
+ * visitor meant. bridge/overlay/cli_launch.py maps the same value onto the
+ * other CLIs (codex gets a workspace-write sandbox rather than no sandbox).
+ */
+export function wirePermissionMode(mode?: string | null): string {
+  const value = String(mode ?? '').trim()
+  return value === '' ? 'default' : value
+}
+
 export function jobIsActive(status?: string) {
   return status === 'starting' || status === 'running'
 }

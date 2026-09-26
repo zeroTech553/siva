@@ -6,26 +6,27 @@
 //   .  transparent
 //   grids are 16×16 unless noted; scale is set per sprite in build.mjs
 //
-// Win95-ish palette shared by most icons:
-//   k #071e28 (ink)     w #ffffff (white)   g #b8b8b8 (silver)
-//   d #6e6e6e (shadow)  b #2456a8 (blue)    c #3fa7c4 (cyan)
-//   y #e8c34a (amber)   r #c44536 (red)     n #2d5b46 (green)
-//   t #58d858 (terminal green)              m #8a5a2b (manila dark)
-//   f #e0b96a (manila)
+// Zero OS palette, shared by every icon (the same tokens as styles/tokens.css).
+// Cool grey plastic + very light cyan. There is deliberately NO green and no
+// lime: the phosphor and the "recycle" chevrons are cyan too.
+//   k #10171b (ink)      w #ffffff (white)    g #dbe3e5 (plastic)
+//   d #aab7bb (shade)    b #12788e (deep cyan) c #8fdfee (light cyan)
+//   y #d9a441 (amber)    r #c4553f (red)      n #45bcd4 (mid cyan)
+//   t #b6ecf6 (phosphor) m #8b9aa0 (faint ink) f #cdf1f8 (cyan fill)
 
 export const PALETTE = {
-  k: '#071e28',
+  k: '#10171b',
   w: '#ffffff',
-  g: '#b8b8b8',
-  d: '#6e6e6e',
-  b: '#2456a8',
-  c: '#3fa7c4',
-  y: '#e8c34a',
-  r: '#c44536',
-  n: '#2d5b46',
-  t: '#58d858',
-  m: '#8a5a2b',
-  f: '#e0b96a',
+  g: '#dbe3e5',
+  d: '#aab7bb',
+  b: '#12788e',
+  c: '#8fdfee',
+  y: '#d9a441',
+  r: '#c4553f',
+  n: '#45bcd4',
+  t: '#b6ecf6',
+  m: '#8b9aa0',
+  f: '#cdf1f8',
 }
 
 export const SPRITES = {
@@ -166,6 +167,46 @@ export const SPRITES = {
     '.kggggggggggggk.',
     '..kkkkkkkkkkkk..',
     '....kg....gk....',
+    '................',
+  ],
+
+  // A mains plug with a cable — "Connect a laptop" (pairing).
+  connect: [
+    '................',
+    '....kk....kk....',
+    '....kk....kk....',
+    '..kkkkkkkkkkkk..',
+    '..kggggggggggk..',
+    '..kgccccccccgk..',
+    '..kgccccccccgk..',
+    '..kggggggggggk..',
+    '..kkkkkkkkkkkk..',
+    '......kcck......',
+    '......kcck......',
+    '.......kk.......',
+    '......kcck......',
+    '......kcck......',
+    '.......kk.......',
+    '................',
+  ],
+
+  // A magnifier over a page — "Deep research".
+  research: [
+    '................',
+    '.....kkkk.......',
+    '...kkccccckk....',
+    '..kccwwwwcck....',
+    '..kcwwwwwwck....',
+    '..kcwwbbwwck....',
+    '..kcwwwwwwck....',
+    '..kccwwwwcck....',
+    '..kkccccckk.....',
+    '.......kkk......',
+    '.........kkk....',
+    '...........kkk..',
+    '.............kk.',
+    '................',
+    '................',
     '................',
   ],
 }
